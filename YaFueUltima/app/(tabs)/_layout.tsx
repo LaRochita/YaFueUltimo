@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Calendar, Trophy, User, DollarSign } from 'lucide-react-native';
+import { Home, Calendar, Users, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -32,29 +32,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="events"
+        name="calendar"
         options={{
-          title: 'Juntadas',
+          title: 'Calendario',
           tabBarIcon: ({ size, color }) => (
             <Calendar size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="ranking"
+        name="groups"
         options={{
-          title: 'Ranking',
+          title: 'Grupos',
           tabBarIcon: ({ size, color }) => (
-            <Trophy size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="expenses"
-        options={{
-          title: 'Gastos',
-          tabBarIcon: ({ size, color }) => (
-            <DollarSign size={size} color={color} />
+            <Users size={size} color={color} />
           ),
         }}
       />

@@ -37,10 +37,6 @@ export default function AuthScreen() {
 
   const socialProviders = [
     { name: 'Google', color: '#DB4437', icon: '🔍' },
-    { name: 'Facebook', color: '#4267B2', icon: '📘' },
-    { name: 'Microsoft', color: '#00A4EF', icon: '🪟' },
-    { name: 'Apple', color: '#000000', icon: '🍎' },
-    { name: 'Android', color: '#3DDC84', icon: '🤖' },
   ];
 
   return (
@@ -241,7 +237,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderRadius: 12,
     marginBottom: 8,
   },
