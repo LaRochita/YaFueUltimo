@@ -2,20 +2,26 @@ import { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useUserStore } from '../store/userStore';
 
 export default function IndexScreen() {
   const router = useRouter();
+  const user = useUserStore(state => state.user);
+  const isLoading = useUserStore(state => state.isLoading);
 
   useEffect(() => {
-    // Simulate checking auth state
-    const timer = setTimeout(() => {
-      // For demo purposes, redirect to auth
-      // In real app, check if user is authenticated
-      router.replace('/auth');
-    }, 2000);
+    if (!isLoading) {
+      const timer = setTimeout(() => {
+        if (user) {
+          router.replace('/(tabs)');
+        } else {
+          router.replace('/auth');
+        }
+      }, 2000);
 
-    return () => clearTimeout(timer);
-  }, []);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, user]);
 
   return (
     <View style={styles.container}>

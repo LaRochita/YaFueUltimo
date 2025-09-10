@@ -19,8 +19,12 @@ import {
   Star,
   TrendingUp
 } from 'lucide-react-native';
+import { useUserStore } from '../../store/userStore';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
+  const user = useUserStore(state => state.user);
+  const router = useRouter();
   const [notifications] = useState([
     { id: 1, text: 'María llegó puntual, +1 punto 🎉', time: '5 min' },
     { id: 2, text: 'Próxima juntada mañana a las 20:00', time: '1h' },
@@ -42,14 +46,14 @@ export default function HomeScreen() {
     { id: 2, name: 'Carlos', nickname: 'Carlitos', points: 42, avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=100' },
     { id: 3, name: 'Juan', nickname: 'Juancito', points: 38, avatar: 'https://images.pexels.com/photos/2379005/pexels-photo-2379005.jpeg?auto=compress&cs=tinysrgb&w=100' },
   ]);
-
+  console.log(user);
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={['#8B5CF6', '#EC4899']} style={styles.header}>
         <View style={styles.headerContent}>
           <View>
             <Text style={styles.greeting}>¡Hola!</Text>
-            <Text style={styles.username}>@tuapodo</Text>
+            <Text style={styles.username}>@{user?.username || 'Invitado'}</Text>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
             <Bell size={24} color="white" />
@@ -142,7 +146,10 @@ export default function HomeScreen() {
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/create-meeting')}
+          >
             <LinearGradient colors={['#8B5CF6', '#EC4899']} style={styles.actionGradient}>
               <Calendar size={24} color="white" />
             </LinearGradient>

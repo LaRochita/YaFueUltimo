@@ -9,15 +9,21 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { User, CreditCard as Edit3, Settings, Trophy, Calendar, Star, TrendingUp, Award, MapPin, Camera, Share, LogOut } from 'lucide-react-native';
+import { useUserStore } from '../../store/userStore';
 
 export default function ProfileScreen() {
+  const router = useRouter();
+  const logout = useUserStore(state => state.logout);
+  const user = useUserStore(state => state.user);
+
   const [userStats] = useState({
-    name: 'Carlos Ruiz',
-    nickname: 'Carlitos',
-    email: 'carlos@example.com',
+    name: user?.firstName ? `${user.firstName} ${user.lastName}` : 'Carlos Ruiz',
+    nickname: user?.username || 'Carlitos',
+    email: user?.email || 'carlos@example.com',
     city: 'Buenos Aires',
-    avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400',
+    avatar: user?.image || 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=400',
     totalPoints: 542,
     eventsAttended: 24,
     eventsHosted: 8,
@@ -96,6 +102,15 @@ export default function ProfileScreen() {
       date: '15 Ene',
     },
   ]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace('/auth');
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -216,7 +231,7 @@ export default function ProfileScreen() {
                       <View style={styles.progressBar}>
                         <View style={[
                           styles.progressFill,
-                          { width: `${achievement.progress}%`, backgroundColor: achievement.color }
+                          { width: achievement.progress ? `${achievement.progress}%` : '0%', backgroundColor: achievement.color }
                         ]} />
                       </View>
                       <Text style={styles.progressText}>{achievement.progress}%</Text>
@@ -285,7 +300,7 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Cuenta</Text>
           
           <View style={styles.accountActions}>
-            <TouchableOpacity style={styles.accountAction}>
+            <TouchableOpacity style={styles.accountAction} onPress={() => router.push('/edit-profile')}>
               <View style={styles.actionIcon}>
                 <User size={20} color="#6B7280" />
               </View>
@@ -299,7 +314,10 @@ export default function ProfileScreen() {
               <Text style={styles.actionText}>Configuración</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={[styles.accountAction, styles.logoutAction]}>
+            <TouchableOpacity 
+              style={[styles.accountAction, styles.logoutAction]}
+              onPress={handleLogout}
+            >
               <View style={styles.actionIcon}>
                 <LogOut size={20} color="#EF4444" />
               </View>

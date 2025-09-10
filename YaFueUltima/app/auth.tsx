@@ -7,32 +7,67 @@ import {
   TouchableOpacity,
   TextInput,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { createUser, loginUser, loginUserWithGoogle } from '../services/users';
+import { useUserStore } from '../store/userStore';
 
 export default function AuthScreen() {
   const router = useRouter();
+  const setUser = useUserStore(state => state.setUser);
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSocialLoading, setIsSocialLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    name: '',
-    nickname: '',
+    firstName: '',
+    lastName: '',
+    username: '',
   });
 
-  const handleSocialAuth = (provider: string) => {
-    console.log(`Authenticating with ${provider}`);
-    // Simulate successful auth
-    router.replace('/(tabs)');
+  const handleSocialAuth = async (provider: string) => {
+    if (provider === 'Google') {
+      try {
+        setIsSocialLoading(true);
+        // Here you would normally get the email from Google OAuth
+        const email = formData.email; // This is just for testing
+        const response = await loginUserWithGoogle(email);
+        await setUser(response);
+        router.replace('/(tabs)');
+      } catch (error) {
+        console.error('Google auth failed:', error);
+      } finally {
+        setIsSocialLoading(false);
+      }
+    }
   };
 
-  const handleEmailAuth = () => {
-    console.log('Email auth:', formData);
-    // Simulate successful auth
-    router.replace('/(tabs)');
+  const handleEmailAuth = async () => {
+    try {
+      setIsLoading(true);
+      if (isLogin) {
+        const response = await loginUser(formData.email, formData.password);
+        await setUser(response);
+      } else {
+        const userData = {
+          ...formData,
+          image: null, // Changed from empty string to null to match backend
+          balance: 0, // Default balance for new users
+        };
+        const response = await createUser(userData);
+        await setUser(response);
+      }
+      router.replace('/(tabs)');
+    } catch (error) {
+      console.error('Authentication failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const socialProviders = [
@@ -74,10 +109,19 @@ export default function AuthScreen() {
               {socialProviders.map((provider) => (
                 <TouchableOpacity
                   key={provider.name}
-                  style={[styles.socialButton, { backgroundColor: provider.color }]}
+                  style={[
+                    styles.socialButton,
+                    { backgroundColor: provider.color },
+                    isSocialLoading && styles.disabledButton
+                  ]}
                   onPress={() => handleSocialAuth(provider.name)}
+                  disabled={isSocialLoading}
                 >
-                  <Text style={styles.socialIcon}>{provider.icon}</Text>
+                  {isSocialLoading ? (
+                    <ActivityIndicator color="white" style={styles.socialIcon} />
+                  ) : (
+                    <Text style={styles.socialIcon}>{provider.icon}</Text>
+                  )}
                   <Text style={styles.socialText}>{provider.name}</Text>
                 </TouchableOpacity>
               ))}
@@ -96,10 +140,22 @@ export default function AuthScreen() {
                     <User size={20} color="#6B7280" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
-                      placeholder="Nombre completo"
-                      value={formData.name}
-                      onChangeText={(text) => setFormData({ ...formData, name: text })}
+                      placeholder="Nombre"
+                      value={formData.firstName}
+                      onChangeText={(text) => setFormData({ ...formData, firstName: text })}
                       placeholderTextColor="#9CA3AF"
+                      editable={!isLoading}
+                    />
+                  </View>
+                  <View style={styles.inputWrapper}>
+                    <User size={20} color="#6B7280" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Apellido"
+                      value={formData.lastName}
+                      onChangeText={(text) => setFormData({ ...formData, lastName: text })}
+                      placeholderTextColor="#9CA3AF"
+                      editable={!isLoading}
                     />
                   </View>
                   <View style={styles.inputWrapper}>
@@ -107,9 +163,10 @@ export default function AuthScreen() {
                     <TextInput
                       style={styles.input}
                       placeholder="Apodo"
-                      value={formData.nickname}
-                      onChangeText={(text) => setFormData({ ...formData, nickname: text })}
+                      value={formData.username}
+                      onChangeText={(text) => setFormData({ ...formData, username: text })}
                       placeholderTextColor="#9CA3AF"
+                      editable={!isLoading}
                     />
                   </View>
                 </>
@@ -124,6 +181,7 @@ export default function AuthScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   placeholderTextColor="#9CA3AF"
+                  editable={!isLoading}
                 />
               </View>
               <View style={styles.inputWrapper}>
@@ -135,10 +193,12 @@ export default function AuthScreen() {
                   onChangeText={(text) => setFormData({ ...formData, password: text })}
                   secureTextEntry={!showPassword}
                   placeholderTextColor="#9CA3AF"
+                  editable={!isLoading}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeIcon}
+                  disabled={isLoading}
                 >
                   {showPassword ? (
                     <EyeOff size={20} color="#6B7280" />
@@ -149,14 +209,25 @@ export default function AuthScreen() {
               </View>
             </View>
 
-            <TouchableOpacity style={styles.primaryButton} onPress={handleEmailAuth}>
-              <Text style={styles.primaryButtonText}>
-                {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
-              </Text>
+            <TouchableOpacity
+              style={[styles.primaryButton, isLoading && styles.disabledButton]}
+              onPress={handleEmailAuth}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.primaryButtonText}>
+                  {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
+                </Text>
+              )}
             </TouchableOpacity>
 
             {isLogin && (
-              <TouchableOpacity style={styles.forgotPassword}>
+              <TouchableOpacity 
+                style={styles.forgotPassword}
+                disabled={isLoading}
+              >
                 <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
               </TouchableOpacity>
             )}
@@ -311,5 +382,8 @@ const styles = StyleSheet.create({
     color: '#8B5CF6',
     fontFamily: 'Inter-Medium',
     fontSize: 14,
+  },
+  disabledButton: {
+    opacity: 0.7,
   },
 });
