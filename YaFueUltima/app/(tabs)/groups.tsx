@@ -16,6 +16,8 @@ import { Plus, X, Users } from 'lucide-react-native';
 import { createGroup, getGroupsByUserId } from '../../services/groups';
 import { useUserStore } from '../../store/userStore';
 import { useRouter } from 'expo-router';
+import { useAppColors } from '../../context/ThemeContext';
+import { ThemedButton, ThemedCard, ThemedText } from '../../components';
 
 interface Group {
   id: string;
@@ -28,26 +30,32 @@ interface Group {
 }
 
 const GroupCard = ({ group, onPress }: { group: Group; onPress: () => void }) => {
+  const { colors } = useAppColors();
   console.log('Rendering GroupCard with data:', group);
+  
   return (
-    <TouchableOpacity 
-      style={styles.groupCard}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.groupInfo}>
-        <Text style={styles.groupName}>{group.name}</Text>
-        <Text style={styles.groupDescription} numberOfLines={2}>
-          {group.description}
-        </Text>
-        <View style={styles.groupMembers}>
-          <Users size={16} color="#6B7280" />
-          <Text style={styles.membersCount}>
-            {group.users?.length || 0} miembros
-          </Text>
+    <ThemedCard variant="outlined" padding="medium" style={styles.groupCard}>
+      <TouchableOpacity 
+        onPress={onPress}
+        activeOpacity={0.7}
+        style={{ flex: 1 }}
+      >
+        <View style={styles.groupInfo}>
+          <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.groupName}>
+            {group.name}
+          </ThemedText>
+          <ThemedText variant="secondary" size="sm" style={styles.groupDescription}>
+            {group.description}
+          </ThemedText>
+          <View style={styles.groupMembers}>
+            <Users size={16} color={colors.text.secondary} />
+            <ThemedText variant="secondary" size="sm" style={styles.membersCount}>
+              {group.users?.length || 0} miembros
+            </ThemedText>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </ThemedCard>
   );
 };
 
@@ -60,6 +68,7 @@ export default function GroupsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const user = useUserStore((state) => state.user);
   const router = useRouter();
+  const { colors } = useAppColors();
 
   const fetchGroups = async () => {
     if (!user) return;
@@ -123,14 +132,19 @@ export default function GroupsScreen() {
   console.log('Current groups state:', groups);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Grupos</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <View style={[styles.header, { 
+        backgroundColor: colors.background.primary,
+        borderBottomColor: colors.border.primary 
+      }]}>
+        <ThemedText variant="primary" size="xl" weight="bold" style={styles.headerTitle}>
+          Grupos
+        </ThemedText>
         <TouchableOpacity 
-          style={styles.addButton}
+          style={[styles.addButton, { backgroundColor: colors.primary[500] }]}
           onPress={() => setModalVisible(true)}
         >
-          <Plus size={24} color="#8B5CF6" />
+          <Plus size={24} color={colors.text.inverse} />
         </TouchableOpacity>
       </View>
 
@@ -141,13 +155,13 @@ export default function GroupsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#8B5CF6']}
-            tintColor="#8B5CF6"
+            colors={[colors.primary[500]]}
+            tintColor={colors.primary[500]}
           />
         }
       >
         {loading && !refreshing ? (
-          <ActivityIndicator size="large" color="#8B5CF6" style={styles.loader} />
+          <ActivityIndicator size="large" color={colors.primary[500]} style={styles.loader} />
         ) : groups && groups.length > 0 ? (
           groups.map((group) => (
             <GroupCard 
@@ -158,10 +172,12 @@ export default function GroupsScreen() {
           ))
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No perteneces a ningún grupo</Text>
-            <Text style={styles.emptyStateSubtext}>
+            <ThemedText variant="secondary" size="lg" weight="medium" style={styles.emptyStateText}>
+              No perteneces a ningún grupo
+            </ThemedText>
+            <ThemedText variant="secondary" size="base" style={styles.emptyStateSubtext}>
               Crea un grupo o pide que te inviten a uno
-            </Text>
+            </ThemedText>
           </View>
         )}
       </ScrollView>
@@ -172,41 +188,54 @@ export default function GroupsScreen() {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
+        <View style={[styles.modalContainer, { backgroundColor: colors.background.overlay }]}>
+          <ThemedCard variant="elevated" padding="large" style={{...styles.modalContent, backgroundColor: colors.background.primary}}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Crear Grupo</Text>
+              <ThemedText variant="primary" size="xl" weight="bold" style={styles.modalTitle}>
+                Crear Grupo
+              </ThemedText>
               <TouchableOpacity 
                 onPress={() => setModalVisible(false)}
                 style={styles.closeButton}
               >
-                <X size={24} color="#6B7280" />
+                <X size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { 
+                backgroundColor: colors.background.secondary,
+                borderColor: colors.border.primary,
+                color: colors.text.primary
+              }]}
               placeholder="Nombre del grupo"
+              placeholderTextColor={colors.text.secondary}
               value={name}
               onChangeText={setName}
             />
 
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { 
+                backgroundColor: colors.background.secondary,
+                borderColor: colors.border.primary,
+                color: colors.text.primary
+              }]}
               placeholder="Descripción"
+              placeholderTextColor={colors.text.secondary}
               value={description}
               onChangeText={setDescription}
               multiline
               numberOfLines={4}
             />
 
-            <TouchableOpacity 
-              style={styles.createButton}
+            <ThemedButton
+              title="Crear Grupo"
               onPress={handleCreateGroup}
-            >
-              <Text style={styles.createButtonText}>Crear Grupo</Text>
-            </TouchableOpacity>
-          </View>
+              variant="primary"
+              size="large"
+              style={styles.createButton}
+            />
+          </ThemedCard>
         </View>
       </Modal>
     </SafeAreaView>
@@ -216,7 +245,6 @@ export default function GroupsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   header: {
     flexDirection: 'row',
@@ -224,20 +252,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   headerTitle: {
     fontSize: 28,
     fontFamily: 'Inter-Bold',
-    color: '#1F2937',
   },
   addButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -249,7 +273,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   groupCard: {
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -268,12 +291,10 @@ const styles = StyleSheet.create({
   groupName: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
     marginBottom: 4,
   },
   groupDescription: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 8,
   },
   groupMembers: {
@@ -282,7 +303,6 @@ const styles = StyleSheet.create({
   },
   membersCount: {
     fontSize: 14,
-    color: '#6B7280',
     marginLeft: 6,
   },
   emptyState: {
@@ -292,23 +312,19 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
     marginBottom: 8,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#6B7280',
     textAlign: 'center',
   },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     width: '90%',
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 20,
     shadowColor: '#000',
@@ -329,32 +345,27 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
   },
   closeButton: {
     padding: 4,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
     fontSize: 16,
-    color: '#1F2937',
   },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
   },
   createButton: {
-    backgroundColor: '#8B5CF6',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
   },
   createButtonText: {
-    color: 'white',
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
   },

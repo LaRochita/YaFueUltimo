@@ -22,10 +22,13 @@ import {
   Clock,
   X,
 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useUserStore } from '../store/userStore';
-import { createMeeting } from '../services/meetings';
+import { useMeetingStore } from '../store/meetingStore';
 import { getGroupsByUserId } from '../services/groups';
+import { useAppColors } from '../context/ThemeContext';
+import { ThemedButton, ThemedCard, ThemedText } from '../components';
+import { gradients } from '../constants/colors';
 
 interface Group {
   id: string;
@@ -37,7 +40,9 @@ interface Group {
 
 export default function CreateMeetingScreen() {
   const router = useRouter();
+  const { groupId } = useLocalSearchParams();
   const user = useUserStore(state => state.user);
+  const { colors } = useAppColors();
   
   // Form state
   const [formData, setFormData] = useState({
@@ -120,6 +125,16 @@ export default function CreateMeetingScreen() {
     loadUserGroups();
   }, []);
 
+  // Preseleccionar grupo si viene como parámetro
+  useEffect(() => {
+    if (groupId && groups.length > 0) {
+      const preselectedGroup = groups.find(group => group.id === groupId);
+      if (preselectedGroup) {
+        setSelectedGroup(preselectedGroup);
+      }
+    }
+  }, [groupId, groups]);
+
   const loadUserGroups = async () => {
     try {
       if (user?.id) {
@@ -196,6 +211,10 @@ export default function CreateMeetingScreen() {
     return true;
   };
 
+  const createNewMeeting = useMeetingStore(state => state.createNewMeeting);
+  const updateMeetingDraft = useMeetingStore(state => state.updateCreateMeetingDraft);
+  const clearMeetingDraft = useMeetingStore(state => state.clearMeetingDraft);
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
@@ -219,8 +238,11 @@ export default function CreateMeetingScreen() {
         })),
       };
 
-      console.log('Sending meeting data:', meetingData);
-      await createMeeting(meetingData);
+      // Guardar en el store y crear la juntada
+      updateMeetingDraft(meetingData);
+      await createNewMeeting(meetingData);
+      clearMeetingDraft();
+      
       Alert.alert('Éxito', 'Juntada creada correctamente', [
         { text: 'OK', onPress: () => router.back() }
       ]);
@@ -249,13 +271,15 @@ export default function CreateMeetingScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#8B5CF6', '#EC4899']} style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <LinearGradient colors={gradients.hero as any} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <ArrowLeft size={24} color="white" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Nueva Juntada</Text>
+          <ThemedText variant="inverse" size="xl" weight="bold" style={styles.headerTitle}>
+            Nueva Juntada
+          </ThemedText>
           <View style={styles.placeholder} />
         </View>
       </LinearGradient>
@@ -263,33 +287,47 @@ export default function CreateMeetingScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Basic Information */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Información Básica</Text>
+          <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.sectionTitle}>
+            Información Básica
+          </ThemedText>
           
           <View style={styles.inputGroup}>
             <View style={styles.inputHeader}>
-              <FileText size={20} color="#8B5CF6" />
-              <Text style={styles.inputLabel}>Nombre de la Juntada</Text>
+              <FileText size={20} color={colors.primary[500]} />
+              <ThemedText variant="primary" size="base" weight="medium" style={styles.inputLabel}>
+                Nombre de la Juntada
+              </ThemedText>
             </View>
             <TextInput
-              style={styles.textInput}
+              style={[styles.textInput, { 
+                backgroundColor: colors.background.secondary,
+                borderColor: colors.border.primary,
+                color: colors.text.primary
+              }]}
               value={formData.name}
               onChangeText={(value) => handleInputChange('name', value)}
               placeholder="Ej: Asado en lo de Juan"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.text.secondary}
             />
           </View>
 
           <View style={styles.inputGroup}>
             <View style={styles.inputHeader}>
-              <FileText size={20} color="#8B5CF6" />
-              <Text style={styles.inputLabel}>Descripción</Text>
+              <FileText size={20} color={colors.primary[500]} />
+              <ThemedText variant="primary" size="base" weight="medium" style={styles.inputLabel}>
+                Descripción
+              </ThemedText>
             </View>
             <TextInput
-              style={[styles.textInput, styles.textArea]}
+              style={[styles.textInput, styles.textArea, { 
+                backgroundColor: colors.background.secondary,
+                borderColor: colors.border.primary,
+                color: colors.text.primary
+              }]}
               value={formData.description}
               onChangeText={(value) => handleInputChange('description', value)}
               placeholder="Describe la juntada..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.text.secondary}
               multiline
               numberOfLines={3}
             />
@@ -298,13 +336,17 @@ export default function CreateMeetingScreen() {
 
         {/* Date and Time */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fecha y Hora</Text>
+          <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.sectionTitle}>
+            Fecha y Hora
+          </ThemedText>
           
           <View style={styles.row}>
             <View style={[styles.inputGroup, styles.halfWidth]}>
               <View style={styles.inputHeader}>
-                <Calendar size={20} color="#8B5CF6" />
-                <Text style={styles.inputLabel}>Fecha</Text>
+                <Calendar size={20} color={colors.primary[500]} />
+                <ThemedText variant="primary" size="base" weight="medium" style={styles.inputLabel}>
+                  Fecha
+                </ThemedText>
               </View>
               <TouchableOpacity 
                 style={styles.dateButton}
@@ -319,14 +361,18 @@ export default function CreateMeetingScreen() {
                   setShowDatePicker(true);
                 }}
               >
-                <Text style={styles.dateText}>{formatDate(formData.date)}</Text>
+                <ThemedText variant="primary" size="base" style={styles.dateText}>
+                  {formatDate(formData.date)}
+                </ThemedText>
               </TouchableOpacity>
             </View>
 
             <View style={[styles.inputGroup, styles.halfWidth]}>
               <View style={styles.inputHeader}>
-                <Clock size={20} color="#8B5CF6" />
-                <Text style={styles.inputLabel}>Hora</Text>
+                <Clock size={20} color={colors.primary[500]} />
+                <ThemedText variant="primary" size="base" weight="medium" style={styles.inputLabel}>
+                  Hora
+                </ThemedText>
               </View>
               <TouchableOpacity 
                 style={styles.dateButton}
@@ -340,7 +386,9 @@ export default function CreateMeetingScreen() {
                   setShowTimePicker(true);
                 }}
               >
-                <Text style={styles.dateText}>{formatTime(formData.date)}</Text>
+                <ThemedText variant="primary" size="base" style={styles.dateText}>
+                  {formatTime(formData.date)}
+                </ThemedText>
               </TouchableOpacity>
             </View>
           </View>
@@ -350,8 +398,10 @@ export default function CreateMeetingScreen() {
         <View style={styles.section}>
           <View style={styles.inputGroup}>
             <View style={styles.inputHeader}>
-              <MapPin size={20} color="#8B5CF6" />
-              <Text style={styles.inputLabel}>Lugar</Text>
+              <MapPin size={20} color={colors.primary[500]} />
+              <ThemedText variant="primary" size="base" weight="medium" style={styles.inputLabel}>
+                Lugar
+              </ThemedText>
             </View>
             <TextInput
               style={styles.textInput}
@@ -365,12 +415,16 @@ export default function CreateMeetingScreen() {
 
         {/* Payment Information */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Información de Pago</Text>
+          <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.sectionTitle}>
+            Información de Pago
+          </ThemedText>
           
           <View style={styles.inputGroup}>
             <View style={styles.inputHeader}>
-              <DollarSign size={20} color="#8B5CF6" />
-              <Text style={styles.inputLabel}>Monto Total</Text>
+              <DollarSign size={20} color={colors.primary[500]} />
+              <ThemedText variant="primary" size="base" weight="medium" style={styles.inputLabel}>
+                Monto Total
+              </ThemedText>
             </View>
             <TextInput
               style={styles.textInput}
@@ -384,8 +438,10 @@ export default function CreateMeetingScreen() {
 
           <View style={styles.inputGroup}>
             <View style={styles.inputHeader}>
-              <FileText size={20} color="#8B5CF6" />
-              <Text style={styles.inputLabel}>Descripción del Gasto</Text>
+              <FileText size={20} color={colors.primary[500]} />
+              <ThemedText variant="primary" size="base" weight="medium" style={styles.inputLabel}>
+                Descripción del Gasto
+              </ThemedText>
             </View>
             <TextInput
               style={styles.textInput}
@@ -397,7 +453,9 @@ export default function CreateMeetingScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Tipo de División</Text>
+            <ThemedText variant="primary" size="base" weight="medium" style={styles.inputLabel}>
+              Tipo de División
+            </ThemedText>
             <View style={styles.payTypeContainer}>
               <TouchableOpacity
                 style={[
@@ -406,12 +464,14 @@ export default function CreateMeetingScreen() {
                 ]}
                 onPress={() => handleInputChange('pay_type', 'EQUAL')}
               >
-                <Text style={[
-                  styles.payTypeText,
-                  formData.pay_type === 'EQUAL' && styles.payTypeTextActive
-                ]}>
+                <ThemedText 
+                  variant={formData.pay_type === 'EQUAL' ? "inverse" : "secondary"} 
+                  size="base" 
+                  weight="medium"
+                  style={styles.payTypeText}
+                >
                   Partes Iguales
-                </Text>
+                </ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -420,12 +480,14 @@ export default function CreateMeetingScreen() {
                 ]}
                 onPress={() => handleInputChange('pay_type', 'ASSIGN')}
               >
-                <Text style={[
-                  styles.payTypeText,
-                  formData.pay_type === 'ASSIGN' && styles.payTypeTextActive
-                ]}>
+                <ThemedText 
+                  variant={formData.pay_type === 'ASSIGN' ? "inverse" : "secondary"} 
+                  size="base" 
+                  weight="medium"
+                  style={styles.payTypeText}
+                >
                   Asignar Montos
-                </Text>
+                </ThemedText>
               </TouchableOpacity>
             </View>
           </View>
@@ -435,8 +497,10 @@ export default function CreateMeetingScreen() {
         <View style={styles.section}>
           <View style={styles.inputGroup}>
             <View style={styles.inputHeader}>
-              <Users size={20} color="#8B5CF6" />
-              <Text style={styles.inputLabel}>Seleccionar Grupo</Text>
+              <Users size={20} color={colors.primary[500]} />
+              <ThemedText variant="primary" size="base" weight="medium" style={styles.inputLabel}>
+                Seleccionar Grupo
+              </ThemedText>
             </View>
             
             {groups.map((group) => (
@@ -449,9 +513,15 @@ export default function CreateMeetingScreen() {
                 onPress={() => setSelectedGroup(group)}
               >
                 <View style={styles.groupInfo}>
-                  <Text style={styles.groupName}>{group.name}</Text>
-                  <Text style={styles.groupDescription}>{group.description}</Text>
-                  <Text style={styles.groupMembers}>{group.users.length} miembros</Text>
+                  <ThemedText variant="primary" size="base" weight="medium" style={styles.groupName}>
+                    {group.name}
+                  </ThemedText>
+                  <ThemedText variant="secondary" size="sm" style={styles.groupDescription}>
+                    {group.description}
+                  </ThemedText>
+                  <ThemedText variant="secondary" size="sm" style={styles.groupMembers}>
+                    {group.users.length} miembros
+                  </ThemedText>
                 </View>
                 <View style={[
                   styles.radioButton,
@@ -469,12 +539,12 @@ export default function CreateMeetingScreen() {
           disabled={loading}
         >
           <LinearGradient
-            colors={loading ? ['#9CA3AF', '#6B7280'] : ['#8B5CF6', '#EC4899']}
+            colors={loading ? [colors.text.secondary, colors.text.secondary] : gradients.primary as any}
             style={styles.submitGradient}
           >
-            <Text style={styles.submitText}>
+            <ThemedText variant="inverse" size="base" weight="semiBold" style={styles.submitText}>
               {loading ? 'Creando...' : 'Crear Juntada'}
-            </Text>
+            </ThemedText>
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>
@@ -494,7 +564,7 @@ export default function CreateMeetingScreen() {
                 onPress={() => setShowDatePicker(false)}
                 style={styles.closeButton}
               >
-                <X size={24} color="#6B7280" />
+                <X size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
             
@@ -583,7 +653,7 @@ export default function CreateMeetingScreen() {
                 onPress={() => setShowTimePicker(false)}
                 style={styles.closeButton}
               >
-                <X size={24} color="#6B7280" />
+                <X size={24} color={colors.text.secondary} />
               </TouchableOpacity>
             </View>
             
@@ -689,7 +759,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontFamily: 'Inter-Bold',
-    color: 'white',
   },
   placeholder: {
     width: 40,
@@ -704,7 +773,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
     marginBottom: 16,
   },
   inputGroup: {
@@ -718,16 +786,13 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontFamily: 'Inter-Medium',
-    color: '#374151',
     marginLeft: 8,
   },
   textInput: {
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     fontFamily: 'Inter-Regular',
-    color: '#1F2937',
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
@@ -743,7 +808,6 @@ const styles = StyleSheet.create({
     width: '48%',
   },
   dateButton: {
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
@@ -752,7 +816,6 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
-    color: '#1F2937',
   },
   payTypeContainer: {
     flexDirection: 'row',
@@ -768,7 +831,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   payTypeButtonActive: {
-    backgroundColor: 'white',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -778,13 +840,10 @@ const styles = StyleSheet.create({
   payTypeText: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
-    color: '#6B7280',
   },
   payTypeTextActive: {
-    color: '#8B5CF6',
   },
   groupOption: {
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -804,19 +863,16 @@ const styles = StyleSheet.create({
   groupName: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
     marginBottom: 4,
   },
   groupDescription: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
     marginBottom: 2,
   },
   groupMembers: {
     fontSize: 12,
     fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
   },
   radioButton: {
     width: 20,
@@ -844,7 +900,6 @@ const styles = StyleSheet.create({
   submitText: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
-    color: 'white',
   },
   modalOverlay: {
     flex: 1,
@@ -852,7 +907,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
@@ -868,7 +922,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontFamily: 'Inter-Bold',
-    color: '#1F2937',
   },
   closeButton: {
     padding: 8,
@@ -884,7 +937,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   confirmButtonText: {
-    color: 'white',
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
   },
@@ -897,13 +949,11 @@ const styles = StyleSheet.create({
   dateLabel: {
     fontSize: 16,
     fontFamily: 'Inter-Medium',
-    color: '#374151',
     marginBottom: 8,
   },
   selectedDateText: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
-    color: '#8B5CF6',
     marginBottom: 20,
     textAlign: 'center',
     textTransform: 'capitalize',
@@ -911,7 +961,6 @@ const styles = StyleSheet.create({
   selectedTimeText: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
-    color: '#8B5CF6',
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -931,7 +980,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Medium',
     textAlign: 'center',
-    color: '#1F2937',
     minWidth: 60,
   },
   timeInputRow: {
@@ -950,12 +998,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Inter-Bold',
     textAlign: 'center',
-    color: '#1F2937',
     minWidth: 80,
   },
   timeSeparator: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
-    color: '#8B5CF6',
   },
 });

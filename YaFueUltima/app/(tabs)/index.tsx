@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,26 +20,66 @@ import {
   TrendingUp
 } from 'lucide-react-native';
 import { useUserStore } from '../../store/userStore';
+import { useMeetingStore } from '../../store/meetingStore';
 import { useRouter } from 'expo-router';
+import { gradients } from '@/constants/colors';
+import { defaultColors } from '@/constants/defaultColors';
+import { useAppColors } from '../../context/ThemeContext';
+import { ThemedButton, ThemedCard, ThemedText } from '../../components';
 
 export default function HomeScreen() {
   const user = useUserStore(state => state.user);
   const router = useRouter();
+  const { colors: themeColors } = useAppColors();
+
+  // Usar los colores del tema o los valores por defecto
+  const colors = themeColors || defaultColors;
   const [notifications] = useState([
     { id: 1, text: 'María llegó puntual, +1 punto 🎉', time: '5 min' },
     { id: 2, text: 'Próxima juntada mañana a las 20:00', time: '1h' },
     { id: 3, text: 'Carlos puso la casa, +2 puntos 🏠', time: '2h' },
   ]);
 
-  const [nextMeetup] = useState({
-    title: 'Asado en lo de Juan',
-    date: 'Sábado 25 Enero',
-    time: '20:00',
-    location: 'Casa de Juan',
-    attendees: 8,
-    total: 12,
-    image: 'https://images.pexels.com/photos/2338407/pexels-photo-2338407.jpeg?auto=compress&cs=tinysrgb&w=400'
-  });
+  const meetings = useMeetingStore(state => state.meetings);
+  const fetchUserMeetings = useMeetingStore(state => state.fetchUserMeetings);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserMeetings(user.id);
+    }
+  }, [user]);
+
+  // Obtener la próxima juntada (la más cercana en el futuro)
+  const nextMeetup = useMemo(() => {
+    if (!meetings.length) return null;
+
+    const now = new Date();
+    const futureMeetings = meetings
+      .filter(meeting => new Date(meeting.date) > now)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    if (!futureMeetings.length) return null;
+
+    const next = futureMeetings[0];
+    const meetingDate = new Date(next.date);
+
+    return {
+      title: next.name,
+      date: meetingDate.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      }),
+      time: meetingDate.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      location: next.place,
+      attendees: next.users.length,
+      total: next.users.length,
+      image: 'https://images.pexels.com/photos/2338407/pexels-photo-2338407.jpeg?auto=compress&cs=tinysrgb&w=400'
+    };
+  }, [meetings]);
 
   const [topRanking] = useState([
     { id: 1, name: 'María', nickname: 'Mari', points: 45, avatar: 'https://images.pexels.com/photos/3763188/pexels-photo-3763188.jpeg?auto=compress&cs=tinysrgb&w=100' },
@@ -48,17 +88,23 @@ export default function HomeScreen() {
   ]);
   console.log(user);
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#8B5CF6', '#EC4899']} style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <LinearGradient colors={gradients.hero as any} style={styles.header}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.greeting}>¡Hola!</Text>
-            <Text style={styles.username}>@{user?.username || 'Invitado'}</Text>
+            <ThemedText variant="inverse" size="2xl" weight="bold" style={styles.greeting}>
+              ¡Hola!
+            </ThemedText>
+            <ThemedText variant="inverse" size="base" style={styles.username}>
+              @{user?.username || 'Invitado'}
+            </ThemedText>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
             <Bell size={24} color="white" />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>3</Text>
+            <View style={[styles.notificationBadge, { backgroundColor: colors.semantic.error }]}>
+              <ThemedText variant="inverse" size="xs" weight="bold" style={styles.badgeText}>
+                3
+              </ThemedText>
             </View>
           </TouchableOpacity>
         </View>
@@ -66,83 +112,133 @@ export default function HomeScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Next Meetup Card */}
-        <View style={styles.card}>
+        <ThemedCard variant="elevated" padding="medium" style={styles.card}>
           <View style={styles.cardHeader}>
-            <Calendar size={20} color="#8B5CF6" />
-            <Text style={styles.cardTitle}>Próxima Juntada</Text>
+            <Calendar size={20} color={colors.primary[500]} />
+            <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.cardTitle}>
+              Próxima Juntada
+            </ThemedText>
           </View>
           
-          <View style={styles.meetupCard}>
-            <Image source={{ uri: nextMeetup.image }} style={styles.meetupImage} />
-            <View style={styles.meetupInfo}>
-              <Text style={styles.meetupTitle}>{nextMeetup.title}</Text>
-              <View style={styles.meetupDetails}>
-                <View style={styles.detailRow}>
-                  <Clock size={16} color="#6B7280" />
-                  <Text style={styles.detailText}>{nextMeetup.date} - {nextMeetup.time}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <MapPin size={16} color="#6B7280" />
-                  <Text style={styles.detailText}>{nextMeetup.location}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Users size={16} color="#6B7280" />
-                  <Text style={styles.detailText}>{nextMeetup.attendees}/{nextMeetup.total} confirmados</Text>
+          {nextMeetup ? (
+            <TouchableOpacity 
+              style={styles.meetupCard}
+              onPress={() => router.push(`/meeting-details?id=${meetings.find(m => m.name === nextMeetup.title)?.id}`)}
+            >
+              <Image source={{ uri: nextMeetup.image }} style={styles.meetupImage} />
+              <View style={styles.meetupInfo}>
+                <ThemedText variant="primary" size="base" weight="semiBold" style={styles.meetupTitle}>
+                  {nextMeetup.title}
+                </ThemedText>
+                <View style={styles.meetupDetails}>
+                  <View style={styles.detailRow}>
+                    <Clock size={16} color={colors.text.secondary} />
+                    <ThemedText variant="secondary" size="sm" style={styles.detailText}>
+                      {nextMeetup.date} - {nextMeetup.time}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <MapPin size={16} color={colors.text.secondary} />
+                    <ThemedText variant="secondary" size="sm" style={styles.detailText}>
+                      {nextMeetup.location}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Users size={16} color={colors.text.secondary} />
+                    <ThemedText variant="secondary" size="sm" style={styles.detailText}>
+                      {nextMeetup.attendees}/{nextMeetup.total} confirmados
+                    </ThemedText>
+                  </View>
                 </View>
               </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.noMeetupCard, { backgroundColor: colors.background.secondary }]}>
+              <ThemedText variant="secondary" size="base" style={styles.noMeetupText}>
+                No hay juntadas próximas
+              </ThemedText>
+              <ThemedText variant="tertiary" size="sm" style={styles.noMeetupSubtext}>
+                ¡Crea una nueva juntada!
+              </ThemedText>
             </View>
-          </View>
+          )}
 
-          <TouchableOpacity style={styles.checkInButton}>
-            <MapPin size={20} color="white" />
-            <Text style={styles.checkInText}>Check-in cuando llegues</Text>
-          </TouchableOpacity>
-        </View>
+          <ThemedButton
+            title="Check-in cuando llegues"
+            onPress={() => {}}
+            variant="primary"
+            size="medium"
+            gradient={true}
+            style={styles.checkInButton}
+          />
+        </ThemedCard>
 
         {/* Ranking Preview */}
-        <View style={styles.card}>
+        <ThemedCard variant="elevated" padding="medium" style={styles.card}>
           <View style={styles.cardHeader}>
-            <Trophy size={20} color="#F59E0B" />
-            <Text style={styles.cardTitle}>Ranking Semanal</Text>
+            <Trophy size={20} color={colors.secondary[500]} />
+            <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.cardTitle}>
+              Ranking Semanal
+            </ThemedText>
             <TouchableOpacity style={styles.seeAllButton}>
-              <Text style={styles.seeAllText}>Ver todo</Text>
+              <ThemedText variant="accent" size="sm" weight="medium" style={styles.seeAllText}>
+                Ver todo
+              </ThemedText>
             </TouchableOpacity>
           </View>
 
           {topRanking.map((user, index) => (
             <View key={user.id} style={styles.rankingItem}>
               <View style={styles.rankingLeft}>
-                <View style={[styles.rankingNumber, { backgroundColor: index === 0 ? '#F59E0B' : index === 1 ? '#6B7280' : '#CD7F32' }]}>
-                  <Text style={styles.rankingNumberText}>{index + 1}</Text>
+                <View style={[styles.rankingNumber, { 
+                  backgroundColor: index === 0 ? colors.secondary[500] : 
+                                  index === 1 ? colors.text.secondary : 
+                                  colors.semantic.warning 
+                }]}>
+                  <ThemedText variant="inverse" size="sm" weight="bold" style={styles.rankingNumberText}>
+                    {index + 1}
+                  </ThemedText>
                 </View>
                 <Image source={{ uri: user.avatar }} style={styles.avatar} />
                 <View>
-                  <Text style={styles.userName}>{user.name}</Text>
-                  <Text style={styles.userNickname}>@{user.nickname}</Text>
+                  <ThemedText variant="primary" size="sm" weight="medium" style={styles.userName}>
+                    {user.name}
+                  </ThemedText>
+                  <ThemedText variant="secondary" size="xs" style={styles.userNickname}>
+                    @{user.nickname}
+                  </ThemedText>
                 </View>
               </View>
               <View style={styles.pointsContainer}>
-                <Star size={16} color="#F59E0B" />
-                <Text style={styles.points}>{user.points}</Text>
+                <Star size={16} color={colors.secondary[500]} />
+                <ThemedText variant="primary" size="sm" weight="medium" style={styles.points}>
+                  {user.points}
+                </ThemedText>
               </View>
             </View>
           ))}
-        </View>
+        </ThemedCard>
 
         {/* Recent Notifications */}
-        <View style={styles.card}>
+        <ThemedCard variant="elevated" padding="medium" style={styles.card}>
           <View style={styles.cardHeader}>
-            <TrendingUp size={20} color="#10B981" />
-            <Text style={styles.cardTitle}>Actividad Reciente</Text>
+            <TrendingUp size={20} color={colors.accent[500]} />
+            <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.cardTitle}>
+              Actividad Reciente
+            </ThemedText>
           </View>
 
           {notifications.map((notification) => (
             <View key={notification.id} style={styles.notificationItem}>
-              <Text style={styles.notificationText}>{notification.text}</Text>
-              <Text style={styles.notificationTime}>{notification.time}</Text>
+              <ThemedText variant="primary" size="sm" style={styles.notificationText}>
+                {notification.text}
+              </ThemedText>
+              <ThemedText variant="secondary" size="xs" style={styles.notificationTime}>
+                {notification.time}
+              </ThemedText>
             </View>
           ))}
-        </View>
+        </ThemedCard>
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
@@ -150,17 +246,21 @@ export default function HomeScreen() {
             style={styles.actionButton}
             onPress={() => router.push('/create-meeting')}
           >
-            <LinearGradient colors={['#8B5CF6', '#EC4899']} style={styles.actionGradient}>
+            <LinearGradient colors={gradients.primary as any} style={styles.actionGradient}>
               <Calendar size={24} color="white" />
             </LinearGradient>
-            <Text style={styles.actionText}>Nueva Juntada</Text>
+            <ThemedText variant="primary" size="sm" weight="medium" style={styles.actionText}>
+              Nueva Juntada
+            </ThemedText>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton}>
-            <LinearGradient colors={['#10B981', '#059669']} style={styles.actionGradient}>
+            <LinearGradient colors={gradients.accent as any} style={styles.actionGradient}>
               <Users size={24} color="white" />
             </LinearGradient>
-            <Text style={styles.actionText}>Invitar Amigos</Text>
+            <ThemedText variant="primary" size="sm" weight="medium" style={styles.actionText}>
+              Invitar Amigos
+            </ThemedText>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -171,7 +271,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   header: {
     paddingHorizontal: 20,
@@ -185,14 +284,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   greeting: {
-    fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: 'white',
+    // Estilos manejados por ThemedText
   },
   username: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: 'rgba(255, 255, 255, 0.8)',
+    opacity: 0.9,
   },
   notificationButton: {
     position: 'relative',
@@ -202,7 +297,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: '#EF4444',
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -210,16 +304,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   badgeText: {
-    color: 'white',
-    fontSize: 12,
-    fontFamily: 'Inter-Bold',
+    // Estilos manejados por ThemedText
   },
   content: {
     flex: 1,
     padding: 20,
   },
   card: {
-    backgroundColor: 'white',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -237,7 +328,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
     marginLeft: 8,
     flex: 1,
   },
@@ -245,12 +335,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
   },
   seeAllText: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    color: '#6B7280',
   },
   meetupCard: {
     flexDirection: 'row',
@@ -268,7 +356,6 @@ const styles = StyleSheet.create({
   meetupTitle: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
     marginBottom: 8,
   },
   meetupDetails: {
@@ -281,19 +368,16 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
     marginLeft: 8,
   },
   checkInButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#8B5CF6',
     paddingVertical: 12,
     borderRadius: 12,
   },
   checkInText: {
-    color: 'white',
     fontFamily: 'Inter-SemiBold',
     fontSize: 16,
     marginLeft: 8,
@@ -319,7 +403,6 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   rankingNumberText: {
-    color: 'white',
     fontFamily: 'Inter-Bold',
     fontSize: 12,
   },
@@ -332,12 +415,10 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
   },
   userNickname: {
     fontSize: 12,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
   },
   pointsContainer: {
     flexDirection: 'row',
@@ -346,7 +427,6 @@ const styles = StyleSheet.create({
   points: {
     fontSize: 16,
     fontFamily: 'Inter-Bold',
-    color: '#F59E0B',
     marginLeft: 4,
   },
   notificationItem: {
@@ -361,13 +441,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#1F2937',
     marginRight: 12,
   },
   notificationTime: {
     fontSize: 12,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
   },
   quickActions: {
     flexDirection: 'row',
@@ -390,7 +468,21 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    color: '#6B7280',
     textAlign: 'center',
+  },
+  noMeetupCard: {
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  noMeetupText: {
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 8,
+  },
+  noMeetupSubtext: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
   },
 });

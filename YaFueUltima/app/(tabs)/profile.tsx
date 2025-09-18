@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,34 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Image,
+  Modal,
+  FlatList,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { User, CreditCard as Edit3, Settings, Trophy, Calendar, Star, TrendingUp, Award, MapPin, Camera, Share, LogOut } from 'lucide-react-native';
+import { User, CreditCard as Edit3, Settings, Trophy, Calendar, Star, TrendingUp, Award, MapPin, Camera, Share, LogOut, X, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useUserStore } from '../../store/userStore';
+import { getGroupsByUserId } from '../../services/groups';
+import { gradients } from '@/constants/colors';
+import { defaultColors } from '@/constants/defaultColors';
+import { useAppColors } from '../../context/ThemeContext';
+import { ThemedButton, ThemedCard, ThemedText, ThemeToggle } from '../../components';
+
+const { width } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const router = useRouter();
   const logout = useUserStore(state => state.logout);
   const user = useUserStore(state => state.user);
+  const { colors: themeColors } = useAppColors();
+  const colors = themeColors || defaultColors;
+  const [showBalanceModal, setShowBalanceModal] = useState(false);
+  const [userGroups, setUserGroups] = useState<any[]>([]);
+  const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
 
-  const [userStats] = useState({
+  // Datos dinámicos que se actualizan cuando el usuario cambia
+  const userStats = useMemo(() => ({
     name: user?.firstName ? `${user.firstName} ${user.lastName}` : 'Carlos Ruiz',
     nickname: user?.username || 'Carlitos',
     email: user?.email || 'carlos@example.com',
@@ -31,7 +47,22 @@ export default function ProfileScreen() {
     joinedDate: 'Enero 2023',
     rank: 2,
     groupName: 'Los Pibes',
-  });
+  }), [user]);
+
+  useEffect(() => {
+    const loadUserGroups = async () => {
+      try {
+        if (user?.id) {
+          const groups = await getGroupsByUserId(user.id);
+          setUserGroups(groups);
+        }
+      } catch (error) {
+        console.error('Error loading user groups:', error);
+      }
+    };
+
+    loadUserGroups();
+  }, [user]);
 
   const [achievements] = useState([
     {
@@ -39,7 +70,7 @@ export default function ProfileScreen() {
       title: 'Anfitrión Pro',
       description: 'Puso la casa 5 veces',
       icon: '🏠',
-      color: '#8B5CF6',
+      color: colors.primary[500],
       earned: true,
       earnedDate: '15 Dic 2023',
     },
@@ -48,7 +79,7 @@ export default function ProfileScreen() {
       title: 'Puntual',
       description: 'Llegó a tiempo 10 veces seguidas',
       icon: '⚡',
-      color: '#F59E0B',
+      color: colors.secondary[500],
       earned: true,
       earnedDate: '20 Nov 2023',
     },
@@ -57,7 +88,7 @@ export default function ProfileScreen() {
       title: 'Chef del Grupo',
       description: 'Trajo comida 3 veces',
       icon: '🍕',
-      color: '#10B981',
+      color: colors.accent[500],
       earned: false,
       progress: 66,
     },
@@ -66,7 +97,7 @@ export default function ProfileScreen() {
       title: 'Organizador',
       description: 'Creó 5 juntadas',
       icon: '📅',
-      color: '#EF4444',
+      color: colors.semantic.error,
       earned: false,
       progress: 40,
     },
@@ -113,15 +144,21 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mi Perfil</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <View style={[styles.header, { 
+        backgroundColor: colors.background.primary,
+        borderBottomColor: colors.border.primary 
+      }]}>
+        <ThemedText variant="primary" size="xl" weight="bold" style={styles.headerTitle}>
+          Mi Perfil
+        </ThemedText>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton}>
-            <Share size={24} color="#8B5CF6" />
+          <ThemeToggle size="large" />
+          <TouchableOpacity style={[styles.headerButton, { backgroundColor: colors.background.tertiary }]}>
+            <Share size={24} color={colors.primary[500]} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Settings size={24} color="#8B5CF6" />
+          <TouchableOpacity style={[styles.headerButton, { backgroundColor: colors.background.tertiary }]}>
+            <Settings size={24} color={colors.primary[500]} />
           </TouchableOpacity>
         </View>
       </View>
@@ -129,7 +166,7 @@ export default function ProfileScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
         <View style={styles.profileCard}>
-          <LinearGradient colors={['#8B5CF6', '#EC4899']} style={styles.profileGradient}>
+          <LinearGradient colors={gradients.hero as any} style={styles.profileGradient}>
             <View style={styles.profileHeader}>
               <View style={styles.avatarContainer}>
                 <Image source={{ uri: userStats.avatar }} style={styles.profileAvatar} />
@@ -139,93 +176,182 @@ export default function ProfileScreen() {
               </View>
               
               <View style={styles.profileInfo}>
-                <Text style={styles.profileName}>{userStats.name}</Text>
-                <Text style={styles.profileNickname}>@{userStats.nickname}</Text>
+                <ThemedText variant="inverse" size="lg" weight="bold" style={styles.profileName}>
+                  {userStats.name}
+                </ThemedText>
+                <ThemedText variant="inverse" size="base" style={styles.profileNickname}>
+                  @{userStats.nickname}
+                </ThemedText>
                 <View style={styles.profileLocation}>
                   <MapPin size={14} color="rgba(255, 255, 255, 0.8)" />
-                  <Text style={styles.locationText}>{userStats.city}</Text>
+                  <ThemedText variant="inverse" size="sm" style={styles.locationText}>
+                    {userStats.city}
+                  </ThemedText>
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.editButton}>
+              <TouchableOpacity 
+                style={styles.editButton}
+                onPress={() => setShowBalanceModal(true)}
+              >
                 <Edit3 size={20} color="white" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.groupInfo}>
-              <Text style={styles.groupName}>{userStats.groupName}</Text>
-              <Text style={styles.memberSince}>Miembro desde {userStats.joinedDate}</Text>
+            {/* Groups Carousel */}
+            <View style={styles.groupsCarousel}>
+              {userGroups.length > 0 ? (
+                <View style={styles.groupCarouselContainer}>
+                  <View style={styles.groupInfo}>
+                    <ThemedText variant="inverse" size="base" weight="medium" style={styles.groupName}>
+                      {userGroups[currentGroupIndex]?.name}
+                    </ThemedText>
+                    <ThemedText variant="inverse" size="sm" style={styles.memberSince}>
+                      {userGroups[currentGroupIndex]?.users?.length || 0} miembros
+                    </ThemedText>
+                  </View>
+                  
+                  {userGroups.length > 1 && (
+                    <View style={styles.carouselControls}>
+                      <TouchableOpacity
+                        style={styles.carouselButton}
+                        onPress={() => setCurrentGroupIndex(prev => 
+                          prev === 0 ? userGroups.length - 1 : prev - 1
+                        )}
+                      >
+                        <ChevronLeft size={16} color="rgba(255, 255, 255, 0.8)" />
+                      </TouchableOpacity>
+                      
+                      <View style={styles.carouselIndicators}>
+                        {userGroups.map((_, index) => (
+                          <View
+                            key={index}
+                            style={[
+                              styles.indicator,
+                              index === currentGroupIndex && styles.activeIndicator
+                            ]}
+                          />
+                        ))}
+                      </View>
+                      
+                      <TouchableOpacity
+                        style={styles.carouselButton}
+                        onPress={() => setCurrentGroupIndex(prev => 
+                          prev === userGroups.length - 1 ? 0 : prev + 1
+                        )}
+                      >
+                        <ChevronRight size={16} color="rgba(255, 255, 255, 0.8)" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.groupInfo}>
+                  <ThemedText variant="inverse" size="base" weight="medium" style={styles.groupName}>
+                    Sin grupos
+                  </ThemedText>
+                  <ThemedText variant="inverse" size="sm" style={styles.memberSince}>
+                    Únete a un grupo para empezar
+                  </ThemedText>
+                </View>
+              )}
             </View>
           </LinearGradient>
         </View>
 
         {/* Stats Overview */}
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <View style={styles.statIcon}>
-              <Star size={24} color="#F59E0B" />
+          <ThemedCard variant="outlined" padding="medium" style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: `${colors.secondary[500]}20` }]}>
+              <Star size={24} color={colors.secondary[500]} />
             </View>
-            <Text style={styles.statNumber}>{userStats.totalPoints}</Text>
-            <Text style={styles.statLabel}>Puntos Totales</Text>
-          </View>
+            <ThemedText variant="primary" size="2xl" weight="bold" style={styles.statNumber}>
+              {userStats.totalPoints}
+            </ThemedText>
+            <ThemedText variant="secondary" size="sm" style={styles.statLabel}>
+              Puntos Totales
+            </ThemedText>
+          </ThemedCard>
 
-          <View style={styles.statCard}>
-            <View style={styles.statIcon}>
-              <Trophy size={24} color="#8B5CF6" />
+          <ThemedCard variant="outlined" padding="medium" style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: `${colors.primary[500]}20` }]}>
+              <Trophy size={24} color={colors.primary[500]} />
             </View>
-            <Text style={styles.statNumber}>#{userStats.rank}</Text>
-            <Text style={styles.statLabel}>Ranking</Text>
-          </View>
+            <ThemedText variant="primary" size="2xl" weight="bold" style={styles.statNumber}>
+              #{userStats.rank}
+            </ThemedText>
+            <ThemedText variant="secondary" size="sm" style={styles.statLabel}>
+              Ranking
+            </ThemedText>
+          </ThemedCard>
 
-          <View style={styles.statCard}>
-            <View style={styles.statIcon}>
-              <Calendar size={24} color="#10B981" />
+          <ThemedCard variant="outlined" padding="medium" style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: `${colors.accent[500]}20` }]}>
+              <Calendar size={24} color={colors.accent[500]} />
             </View>
-            <Text style={styles.statNumber}>{userStats.eventsAttended}</Text>
-            <Text style={styles.statLabel}>Juntadas</Text>
-          </View>
+            <ThemedText variant="primary" size="2xl" weight="bold" style={styles.statNumber}>
+              {userStats.eventsAttended}
+            </ThemedText>
+            <ThemedText variant="secondary" size="sm" style={styles.statLabel}>
+              Juntadas
+            </ThemedText>
+          </ThemedCard>
 
-          <View style={styles.statCard}>
-            <View style={styles.statIcon}>
-              <TrendingUp size={24} color="#EF4444" />
+          <ThemedCard variant="outlined" padding="medium" style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: `${colors.semantic.error}20` }]}>
+              <TrendingUp size={24} color={colors.semantic.error} />
             </View>
-            <Text style={styles.statNumber}>{userStats.currentStreak}</Text>
-            <Text style={styles.statLabel}>Racha</Text>
-          </View>
+            <ThemedText variant="primary" size="2xl" weight="bold" style={styles.statNumber}>
+              {userStats.currentStreak}
+            </ThemedText>
+            <ThemedText variant="secondary" size="sm" style={styles.statLabel}>
+              Racha
+            </ThemedText>
+          </ThemedCard>
         </View>
 
         {/* Achievements */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Logros</Text>
+            <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.sectionTitle}>
+              Logros
+            </ThemedText>
             <TouchableOpacity style={styles.seeAllButton}>
-              <Text style={styles.seeAllText}>Ver todos</Text>
+              <ThemedText variant="accent" size="sm" weight="medium" style={styles.seeAllText}>
+                Ver todos
+              </ThemedText>
             </TouchableOpacity>
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.achievementsScroll}>
               {achievements.map((achievement) => (
-                <View key={achievement.id} style={[
-                  styles.achievementCard,
-                  !achievement.earned && styles.lockedAchievement
-                ]}>
+                <ThemedCard 
+                  key={achievement.id} 
+                  variant="outlined" 
+                  padding="medium" 
+                  style={styles.achievementCard}
+                >
                   <View style={[
                     styles.achievementIcon,
-                    { backgroundColor: achievement.earned ? `${achievement.color}20` : '#F3F4F6' }
+                    { backgroundColor: achievement.earned ? `${achievement.color}20` : colors.background.tertiary }
                   ]}>
                     <Text style={styles.achievementEmoji}>{achievement.icon}</Text>
                   </View>
                   
-                  <Text style={[
-                    styles.achievementTitle,
-                    !achievement.earned && styles.lockedText
-                  ]}>
+                  <ThemedText 
+                    variant={achievement.earned ? "primary" : "tertiary"} 
+                    size="sm" 
+                    weight="medium"
+                    style={styles.achievementTitle}
+                  >
                     {achievement.title}
-                  </Text>
+                  </ThemedText>
                   
                   {achievement.earned ? (
-                    <Text style={styles.earnedDate}>{achievement.earnedDate}</Text>
+                    <ThemedText variant="secondary" size="xs" style={styles.earnedDate}>
+                      {achievement.earnedDate}
+                    </ThemedText>
                   ) : (
                     <View style={styles.progressContainer}>
                       <View style={styles.progressBar}>
@@ -234,10 +360,12 @@ export default function ProfileScreen() {
                           { width: achievement.progress ? `${achievement.progress}%` : '0%', backgroundColor: achievement.color }
                         ]} />
                       </View>
-                      <Text style={styles.progressText}>{achievement.progress}%</Text>
+                      <ThemedText variant="secondary" size="xs" style={styles.progressText}>
+                        {achievement.progress}%
+                      </ThemedText>
                     </View>
                   )}
-                </View>
+                </ThemedCard>
               ))}
             </View>
           </ScrollView>
@@ -245,73 +373,105 @@ export default function ProfileScreen() {
 
         {/* Recent Activity */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actividad Reciente</Text>
+          <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.sectionTitle}>
+            Actividad Reciente
+          </ThemedText>
           
           {recentActivity.map((activity) => (
-            <View key={activity.id} style={styles.activityItem}>
+            <ThemedCard key={activity.id} variant="outlined" padding="small" style={styles.activityItem}>
               <View style={styles.activityIcon}>
-                {activity.type === 'attendance' && <Calendar size={16} color="#8B5CF6" />}
-                {activity.type === 'hosting' && <User size={16} color="#10B981" />}
-                {activity.type === 'punctuality' && <Star size={16} color="#F59E0B" />}
-                {activity.type === 'food' && <Trophy size={16} color="#EF4444" />}
+                {activity.type === 'attendance' && <Calendar size={16} color={colors.primary[500]} />}
+                {activity.type === 'hosting' && <User size={16} color={colors.accent[500]} />}
+                {activity.type === 'punctuality' && <Star size={16} color={colors.secondary[500]} />}
+                {activity.type === 'food' && <Trophy size={16} color={colors.semantic.error} />}
               </View>
               
               <View style={styles.activityInfo}>
-                <Text style={styles.activityDescription}>{activity.description}</Text>
-                <Text style={styles.activityDate}>{activity.date}</Text>
+                <ThemedText variant="primary" size="sm" weight="medium" style={styles.activityDescription}>
+                  {activity.description}
+                </ThemedText>
+                <ThemedText variant="secondary" size="xs" style={styles.activityDate}>
+                  {activity.date}
+                </ThemedText>
               </View>
               
               <View style={styles.pointsEarned}>
-                <Text style={styles.pointsText}>{activity.points}</Text>
+                <ThemedText variant="accent" size="sm" weight="bold" style={styles.pointsText}>
+                  {activity.points}
+                </ThemedText>
               </View>
-            </View>
+            </ThemedCard>
           ))}
         </View>
 
         {/* Additional Stats */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Estadísticas Detalladas</Text>
+          <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.sectionTitle}>
+            Estadísticas Detalladas
+          </ThemedText>
           
-          <View style={styles.detailedStatsCard}>
+          <ThemedCard variant="outlined" padding="medium" style={styles.detailedStatsCard}>
             <View style={styles.detailedStatRow}>
-              <Text style={styles.detailedStatLabel}>Juntadas asistidas</Text>
-              <Text style={styles.detailedStatValue}>{userStats.eventsAttended}</Text>
+              <ThemedText variant="secondary" size="sm" style={styles.detailedStatLabel}>
+                Juntadas asistidas
+              </ThemedText>
+              <ThemedText variant="primary" size="sm" weight="medium" style={styles.detailedStatValue}>
+                {userStats.eventsAttended}
+              </ThemedText>
             </View>
             
             <View style={styles.detailedStatRow}>
-              <Text style={styles.detailedStatLabel}>Veces que puso la casa</Text>
-              <Text style={styles.detailedStatValue}>{userStats.eventsHosted}</Text>
+              <ThemedText variant="secondary" size="sm" style={styles.detailedStatLabel}>
+                Veces que puso la casa
+              </ThemedText>
+              <ThemedText variant="primary" size="sm" weight="medium" style={styles.detailedStatValue}>
+                {userStats.eventsHosted}
+              </ThemedText>
             </View>
             
             <View style={styles.detailedStatRow}>
-              <Text style={styles.detailedStatLabel}>Racha actual</Text>
-              <Text style={styles.detailedStatValue}>{userStats.currentStreak} juntadas</Text>
+              <ThemedText variant="secondary" size="sm" style={styles.detailedStatLabel}>
+                Racha actual
+              </ThemedText>
+              <ThemedText variant="primary" size="sm" weight="medium" style={styles.detailedStatValue}>
+                {userStats.currentStreak} juntadas
+              </ThemedText>
             </View>
             
             <View style={styles.detailedStatRow}>
-              <Text style={styles.detailedStatLabel}>Tasa de asistencia</Text>
-              <Text style={styles.detailedStatValue}>85%</Text>
+              <ThemedText variant="secondary" size="sm" style={styles.detailedStatLabel}>
+                Tasa de asistencia
+              </ThemedText>
+              <ThemedText variant="primary" size="sm" weight="medium" style={styles.detailedStatValue}>
+                85%
+              </ThemedText>
             </View>
-          </View>
+          </ThemedCard>
         </View>
 
         {/* Account Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Cuenta</Text>
+          <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.sectionTitle}>
+            Cuenta
+          </ThemedText>
           
           <View style={styles.accountActions}>
             <TouchableOpacity style={styles.accountAction} onPress={() => router.push('/edit-profile')}>
               <View style={styles.actionIcon}>
-                <User size={20} color="#6B7280" />
+                <User size={20} color={colors.text.secondary} />
               </View>
-              <Text style={styles.actionText}>Editar Perfil</Text>
+              <ThemedText variant="primary" size="base" style={styles.actionText}>
+                Editar Perfil
+              </ThemedText>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.accountAction}>
               <View style={styles.actionIcon}>
-                <Settings size={20} color="#6B7280" />
+                <Settings size={20} color={colors.text.secondary} />
               </View>
-              <Text style={styles.actionText}>Configuración</Text>
+              <ThemedText variant="primary" size="base" style={styles.actionText}>
+                Configuración
+              </ThemedText>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -319,13 +479,70 @@ export default function ProfileScreen() {
               onPress={handleLogout}
             >
               <View style={styles.actionIcon}>
-                <LogOut size={20} color="#EF4444" />
+                <LogOut size={20} color={colors.semantic.error} />
               </View>
-              <Text style={[styles.actionText, styles.logoutText]}>Cerrar Sesión</Text>
+              <ThemedText variant="primary" size="base" style={styles.actionText}>
+                Cerrar Sesión
+              </ThemedText>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
+
+      {/* Balance Modal */}
+      <Modal
+        visible={showBalanceModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowBalanceModal(false)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: colors.background.overlay }]}>
+          <ThemedCard variant="elevated" padding="large" style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <ThemedText variant="primary" size="xl" weight="bold" style={styles.modalTitle}>
+                Mi Balance
+              </ThemedText>
+              <TouchableOpacity
+                onPress={() => setShowBalanceModal(false)}
+                style={styles.closeButton}
+              >
+                <X size={24} color={colors.text.secondary} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.balanceContainer}>
+              <View style={[styles.balanceIconContainer, { backgroundColor: `${colors.accent[500]}20` }]}>
+                <DollarSign size={32} color={colors.accent[500]} />
+              </View>
+              <ThemedText variant="primary" size="3xl" weight="bold" style={styles.balanceAmount}>
+                ${user?.balance?.toFixed(2) || '0.00'}
+              </ThemedText>
+              <ThemedText variant="secondary" size="base" style={styles.balanceLabel}>
+                Balance Actual
+              </ThemedText>
+            </View>
+
+            <View style={styles.balanceInfo}>
+              <ThemedText variant="secondary" size="sm" style={styles.balanceInfoText}>
+                Este es tu balance actual basado en las juntadas y gastos compartidos.
+              </ThemedText>
+              {(user?.balance || 0) > 0 ? (
+                <ThemedText variant="primary" size="sm" weight="medium" style={styles.positiveBalanceText}>
+                  ¡Tienes un balance positivo! Te deben dinero.
+                </ThemedText>
+              ) : (user?.balance || 0) < 0 ? (
+                <ThemedText variant="primary" size="sm" weight="medium" style={styles.negativeBalanceText}>
+                  Tienes deudas pendientes por pagar.
+                </ThemedText>
+              ) : (
+                <ThemedText variant="primary" size="sm" weight="medium" style={styles.neutralBalanceText}>
+                  Estás al día con todos los pagos.
+                </ThemedText>
+              )}
+            </View>
+          </ThemedCard>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -333,7 +550,6 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   header: {
     flexDirection: 'row',
@@ -341,14 +557,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   headerTitle: {
-    fontSize: 28,
-    fontFamily: 'Inter-Bold',
-    color: '#1F2937',
+    // Estilos manejados por ThemedText
   },
   headerActions: {
     flexDirection: 'row',
@@ -358,7 +570,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -409,7 +620,6 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
-    color: 'white',
   },
   profileNickname: {
     fontSize: 16,
@@ -435,19 +645,54 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  groupsCarousel: {
+    marginTop: 16,
+  },
+  groupCarouselContainer: {
+    alignItems: 'center',
+  },
   groupInfo: {
     alignItems: 'center',
+    marginBottom: 12,
   },
   groupName: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
-    color: 'white',
     marginBottom: 4,
+    textAlign: 'center',
   },
   memberSince: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+  },
+  carouselControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  carouselButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  carouselIndicators: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  activeIndicator: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -456,7 +701,6 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'white',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
@@ -478,13 +722,11 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontFamily: 'Inter-Bold',
-    color: '#1F2937',
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    color: '#6B7280',
     textAlign: 'center',
   },
   section: {
@@ -499,7 +741,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
   },
   seeAllButton: {
     paddingHorizontal: 12,
@@ -510,7 +751,6 @@ const styles = StyleSheet.create({
   seeAllText: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    color: '#6B7280',
   },
   achievementsScroll: {
     flexDirection: 'row',
@@ -518,7 +758,6 @@ const styles = StyleSheet.create({
   },
   achievementCard: {
     width: 120,
-    backgroundColor: 'white',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
@@ -545,17 +784,14 @@ const styles = StyleSheet.create({
   achievementTitle: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
     textAlign: 'center',
     marginBottom: 4,
   },
   lockedText: {
-    color: '#6B7280',
   },
   earnedDate: {
     fontSize: 12,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
     textAlign: 'center',
   },
   progressContainer: {
@@ -576,12 +812,10 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 12,
     fontFamily: 'Inter-SemiBold',
-    color: '#6B7280',
   },
   activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -606,13 +840,11 @@ const styles = StyleSheet.create({
   activityDescription: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
-    color: '#1F2937',
     marginBottom: 2,
   },
   activityDate: {
     fontSize: 12,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
   },
   pointsEarned: {
     backgroundColor: '#FEF3C7',
@@ -623,10 +855,8 @@ const styles = StyleSheet.create({
   pointsText: {
     fontSize: 12,
     fontFamily: 'Inter-Bold',
-    color: '#F59E0B',
   },
   detailedStatsCard: {
-    backgroundColor: 'white',
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
@@ -646,15 +876,12 @@ const styles = StyleSheet.create({
   detailedStatLabel: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
   },
   detailedStatValue: {
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
   },
   accountActions: {
-    backgroundColor: 'white',
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -685,9 +912,81 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 16,
     fontFamily: 'Inter-Medium',
-    color: '#1F2937',
   },
   logoutText: {
-    color: '#EF4444',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  balanceContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  balanceIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#DCFCE7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  balanceAmount: {
+    fontSize: 32,
+    fontFamily: 'Inter-Bold',
+    marginBottom: 8,
+  },
+  balanceLabel: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+  },
+  balanceInfo: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+  },
+  balanceInfoText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  positiveBalanceText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    textAlign: 'center',
+  },
+  negativeBalanceText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    textAlign: 'center',
+  },
+  neutralBalanceText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    textAlign: 'center',
   },
 });

@@ -13,12 +13,15 @@ import {
 import { useRouter } from 'expo-router';
 import { ArrowLeft, User, Camera } from 'lucide-react-native';
 import { useUserStore } from '../store/userStore';
-import { updateUser } from '../services/users';
+import { updateUser as updateUserService } from '../services/users';
+import { useAppColors } from '../context/ThemeContext';
+import { ThemedButton, ThemedCard, ThemedText } from '../components';
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const user = useUserStore(state => state.user);
-  const setUser = useUserStore(state => state.setUser);
+  const updateUser = useUserStore(state => state.updateUser);
+  const { colors } = useAppColors();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: user?.username || '',
@@ -32,34 +35,36 @@ export default function EditProfileScreen() {
     
     try {
       setIsLoading(true);
-      const response = await updateUser(user.id, {
+      const response = await updateUserService(user.id, {
         ...formData,
         email: user.email, // Mantenemos el email actual
         balance: user.balance, // Mantenemos el balance actual
       });
       
       // Actualizamos el store con los nuevos datos
-      await setUser({
-        email: response.email,
-        password: '', // No necesitamos la contraseña aquí
-        user: response.user || response, // Manejamos ambos casos de respuesta
-      });
+      const updatedUserData = response.user || response;
+      await updateUser(updatedUserData);
       
       router.back();
     } catch (error) {
-      console.error('Error updating profile:', error.response.data.message);
+      console.error('Error updating profile:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <View style={[styles.header, { 
+        backgroundColor: colors.background.primary,
+        borderBottomColor: colors.border.primary 
+      }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color="#1F2937" />
+          <ArrowLeft size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Editar Perfil</Text>
+        <ThemedText variant="primary" size="xl" weight="bold" style={styles.headerTitle}>
+          Editar Perfil
+        </ThemedText>
         <View style={{ width: 40 }} /> {/* Espaciador para centrar el título */}
       </View>
 
@@ -71,52 +76,70 @@ export default function EditProfileScreen() {
             }}
             style={styles.avatar}
           />
-          <TouchableOpacity style={styles.cameraButton}>
+          <TouchableOpacity style={[styles.cameraButton, { backgroundColor: colors.primary[500] }]}>
             <Camera size={20} color="white" />
           </TouchableOpacity>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Nombre de usuario</Text>
+            <ThemedText variant="primary" size="base" weight="medium" style={styles.label}>
+              Nombre de usuario
+            </ThemedText>
             <View style={styles.inputWrapper}>
-              <User size={20} color="#6B7280" style={styles.inputIcon} />
+              <User size={20} color={colors.text.secondary} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { 
+                  backgroundColor: colors.background.secondary,
+                  borderColor: colors.border.primary,
+                  color: colors.text.primary
+                }]}
                 value={formData.username}
                 onChangeText={(text) => setFormData({ ...formData, username: text })}
                 placeholder="Nombre de usuario"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.text.secondary}
                 editable={!isLoading}
               />
             </View>
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Nombre</Text>
+            <ThemedText variant="primary" size="base" weight="medium" style={styles.label}>
+              Nombre
+            </ThemedText>
             <View style={styles.inputWrapper}>
-              <User size={20} color="#6B7280" style={styles.inputIcon} />
+              <User size={20} color={colors.text.secondary} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { 
+                  backgroundColor: colors.background.secondary,
+                  borderColor: colors.border.primary,
+                  color: colors.text.primary
+                }]}
                 value={formData.firstName}
                 onChangeText={(text) => setFormData({ ...formData, firstName: text })}
                 placeholder="Nombre"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.text.secondary}
                 editable={!isLoading}
               />
             </View>
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Apellido</Text>
+            <ThemedText variant="primary" size="base" weight="medium" style={styles.label}>
+              Apellido
+            </ThemedText>
             <View style={styles.inputWrapper}>
-              <User size={20} color="#6B7280" style={styles.inputIcon} />
+              <User size={20} color={colors.text.secondary} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { 
+                  backgroundColor: colors.background.secondary,
+                  borderColor: colors.border.primary,
+                  color: colors.text.primary
+                }]}
                 value={formData.lastName}
                 onChangeText={(text) => setFormData({ ...formData, lastName: text })}
                 placeholder="Apellido"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={colors.text.secondary}
                 editable={!isLoading}
               />
             </View>
@@ -124,22 +147,28 @@ export default function EditProfileScreen() {
 
           {/* Mostramos el email como información no editable */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
-            <Text style={styles.emailText}>{user?.email}</Text>
+            <ThemedText variant="primary" size="base" weight="medium" style={styles.label}>
+              Email
+            </ThemedText>
+            <ThemedText variant="secondary" size="base" style={styles.emailText}>
+              {user?.email}
+            </ThemedText>
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.saveButton, isLoading && styles.disabledButton]}
-          onPress={handleSave}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.saveButtonText}>Guardar Cambios</Text>
-          )}
-        </TouchableOpacity>
+        {isLoading ? (
+          <View style={[styles.saveButton, styles.disabledButton]}>
+            <ActivityIndicator color={colors.text.inverse} />
+          </View>
+        ) : (
+          <ThemedButton
+            title="Guardar Cambios"
+            onPress={handleSave}
+            variant="primary"
+            size="large"
+            style={styles.saveButton}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -156,7 +185,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
@@ -169,7 +197,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
   },
   content: {
     flex: 1,
@@ -185,7 +212,6 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 3,
-    borderColor: 'white',
   },
   cameraButton: {
     position: 'absolute',
@@ -198,7 +224,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: 'white',
   },
   form: {
     gap: 20,
@@ -209,13 +234,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
-    color: '#4B5563',
     marginLeft: 4,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -229,12 +252,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     fontSize: 16,
     fontFamily: 'Inter-Regular',
-    color: '#1F2937',
   },
   emailText: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
     paddingHorizontal: 4,
   },
   saveButton: {
@@ -245,7 +266,6 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   saveButtonText: {
-    color: 'white',
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
   },

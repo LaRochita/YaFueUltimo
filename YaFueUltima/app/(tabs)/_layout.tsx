@@ -1,17 +1,24 @@
 import { Tabs } from 'expo-router';
 import { Home, Calendar, Users, User } from 'lucide-react-native';
+import { useAppColors } from '../../context/ThemeContext';
+import { defaultColors } from '@/constants/defaultColors';
 
 export default function TabLayout() {
+  const { colors } = useAppColors();
+
+  // Usar los colores del tema o los valores por defecto
+  const activeColors = colors || defaultColors;
+  
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#8B5CF6',
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarActiveTintColor: activeColors.primary[500],
+        tabBarInactiveTintColor: activeColors.text.secondary,
         tabBarStyle: {
-          backgroundColor: 'white',
+          backgroundColor: activeColors.background.primary,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: activeColors.border.primary,
           paddingBottom: 8,
           paddingTop: 8,
           height: 68,

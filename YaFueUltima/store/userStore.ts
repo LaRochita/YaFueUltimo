@@ -22,6 +22,7 @@ interface AuthResponse {
 interface UserState {
   user: UserData | null;
   setUser: (response: AuthResponse | null) => void;
+  updateUser: (userData: UserData) => void;
   isLoading: boolean;
   initialize: () => Promise<void>;
   logout: () => Promise<void>;
@@ -46,6 +47,15 @@ export const useUserStore = create<UserState>((set) => ({
     } catch (error) {
       console.error('Error saving user data:', error);
       set({ user: null });
+    }
+  },
+  updateUser: async (userData) => {
+    try {
+      console.log('Actualizando usuario:', userData);
+      await SecureStore.setItemAsync(USER_STORAGE_KEY, JSON.stringify(userData));
+      set({ user: userData });
+    } catch (error) {
+      console.error('Error updating user data:', error);
     }
   },
   initialize: async () => {

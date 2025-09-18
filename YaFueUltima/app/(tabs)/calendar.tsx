@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,52 +11,82 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Calendar, MapPin, Users, Clock, Plus, Camera, CircleCheck as CheckCircle, Circle, Star, MessageCircle } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { useMeetingStore } from '../../store/meetingStore';
+import { useUserStore } from '../../store/userStore';
+import { useAppColors } from '../../context/ThemeContext';
+import { ThemedButton, ThemedCard, ThemedText } from '../../components';
+import { gradients } from '../../constants/colors';
 
 export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
 
-  const [upcomingEvents] = useState([
-    {
-      id: 1,
-      title: 'Asado en lo de Juan',
-      date: '2024-01-25',
-      time: '20:00',
-      location: 'Casa de Juan',
-      attendees: ['María', 'Carlos', 'Ana', 'Pedro'],
-      confirmed: 8,
-      total: 12,
-      image: 'https://images.pexels.com/photos/2338407/pexels-photo-2338407.jpeg?auto=compress&cs=tinysrgb&w=400',
-      isNext: true,
-    },
-    {
-      id: 2,
-      title: 'Pizza & Películas',
-      date: '2024-01-28',
-      time: '19:30',
-      location: 'Casa de María',
-      attendees: ['Juan', 'Carlos', 'Ana'],
-      confirmed: 6,
-      total: 10,
-      image: 'https://images.pexels.com/photos/1566837/pexels-photo-1566837.jpeg?auto=compress&cs=tinysrgb&w=400',
-      isNext: false,
-    },
-  ]);
+  const router = useRouter();
+  const user = useUserStore(state => state.user);
+  const meetings = useMeetingStore(state => state.meetings);
+  const fetchUserMeetings = useMeetingStore(state => state.fetchUserMeetings);
+  const { colors } = useAppColors();
 
-  const [pastEvents] = useState([
-    {
-      id: 3,
-      title: 'Cumpleaños de Ana',
-      date: '2024-01-20',
-      time: '21:00',
-      location: 'Bar Central',
-      attendees: ['Juan', 'María', 'Carlos', 'Pedro', 'Lucía'],
-      photos: 15,
-      points: 5,
-      image: 'https://images.pexels.com/photos/1587927/pexels-photo-1587927.jpeg?auto=compress&cs=tinysrgb&w=400',
-    },
-  ]);
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserMeetings(user.id);
+    }
+  }, [user]);
+
+  const upcomingEvents = useMemo(() => {
+    const now = new Date();
+    const selectedDateStr = selectedDate.toDateString();
+    
+    return meetings
+      .filter(meeting => {
+        const meetingDate = new Date(meeting.date);
+        // Si hay una fecha seleccionada, filtrar por esa fecha
+        // Si no, mostrar todas las futuras
+        if (selectedDate.toDateString() !== new Date().toDateString()) {
+          return meetingDate.toDateString() === selectedDateStr;
+        }
+        return meetingDate > now;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map((meeting, index) => {
+        const meetingDate = new Date(meeting.date);
+        return {
+          id: meeting.id,
+          title: meeting.name,
+          date: meetingDate.toLocaleDateString('es-ES'),
+          time: meetingDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+          location: meeting.place,
+          attendees: meeting.users.map(user => user.firstName),
+          confirmed: meeting.users.length,
+          total: meeting.users.length,
+          image: 'https://images.pexels.com/photos/2338407/pexels-photo-2338407.jpeg?auto=compress&cs=tinysrgb&w=400',
+          isNext: index === 0 && selectedDate.toDateString() === new Date().toDateString(),
+        };
+      });
+  }, [meetings, selectedDate]);
+
+  const pastEvents = useMemo(() => {
+    const now = new Date();
+    return meetings
+      .filter(meeting => new Date(meeting.date) <= now)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .map(meeting => {
+        const meetingDate = new Date(meeting.date);
+        return {
+          id: meeting.id,
+          title: meeting.name,
+          date: meetingDate.toLocaleDateString('es-ES'),
+          time: meetingDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+          location: meeting.place,
+          attendees: meeting.users.map(user => user.firstName),
+          photos: 0, // Esto se podría implementar más adelante
+          points: 5, // Esto se podría implementar más adelante
+          image: 'https://images.pexels.com/photos/1587927/pexels-photo-1587927.jpeg?auto=compress&cs=tinysrgb&w=400',
+        };
+      });
+  }, [meetings]);
 
   const handleCheckIn = () => {
     setCheckedIn(true);
@@ -65,37 +95,64 @@ export default function CalendarScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Calendario</Text>
-        <TouchableOpacity style={styles.addButton}>
-          <Plus size={24} color="#8B5CF6" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <View style={[styles.header, { 
+        backgroundColor: colors.background.primary,
+        borderBottomColor: colors.border.primary 
+      }]}>
+        <ThemedText variant="primary" size="xl" weight="bold" style={styles.headerTitle}>
+          Calendario
+        </ThemedText>
+        <TouchableOpacity 
+          style={[styles.addButton, { backgroundColor: colors.primary[500] }]}
+          onPress={() => router.push('/create-meeting')}
+        >
+          <Plus size={24} color="white" />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Calendar Mini View */}
         <View style={styles.calendarSection}>
-          <Text style={styles.sectionTitle}>Enero 2024</Text>
+          <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.sectionTitle}>
+            Enero 2024
+          </ThemedText>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.calendarScroll}>
             {Array.from({ length: 7 }, (_, i) => {
               const date = new Date();
               date.setDate(date.getDate() + i);
               const isToday = i === 0;
-              const hasEvent = i === 1 || i === 4;
+              const isSelected = date.toDateString() === selectedDate.toDateString();
+              const hasEvent = meetings.some(meeting => 
+                new Date(meeting.date).toDateString() === date.toDateString()
+              );
               
               return (
                 <TouchableOpacity
                   key={i}
-                  style={[styles.calendarDay, isToday && styles.todayDay]}
+                  style={[
+                    styles.calendarDay, 
+                    isToday && { backgroundColor: colors.primary[500] },
+                    isSelected && !isToday && { backgroundColor: colors.accent[500] }
+                  ]}
                   onPress={() => setSelectedDate(date)}
                 >
-                  <Text style={[styles.dayName, isToday && styles.todayText]}>
+                  <ThemedText 
+                    variant={(isToday || isSelected) ? "inverse" : "secondary"} 
+                    size="xs" 
+                    weight="medium"
+                    style={styles.dayName}
+                  >
                     {date.toLocaleDateString('es', { weekday: 'short' }).toUpperCase()}
-                  </Text>
-                  <Text style={[styles.dayNumber, isToday && styles.todayText]}>
+                  </ThemedText>
+                  <ThemedText 
+                    variant={(isToday || isSelected) ? "inverse" : "primary"} 
+                    size="base" 
+                    weight="bold"
+                    style={styles.dayNumber}
+                  >
                     {date.getDate()}
-                  </Text>
+                  </ThemedText>
                   {hasEvent && <View style={styles.eventDot} />}
                 </TouchableOpacity>
               );
@@ -105,54 +162,104 @@ export default function CalendarScreen() {
 
         {/* Upcoming Events */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Próximas Juntadas</Text>
+          <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.sectionTitle}>
+            {selectedDate.toDateString() === new Date().toDateString() 
+              ? 'Próximas Juntadas' 
+              : `Juntadas del ${selectedDate.toLocaleDateString('es-ES', { 
+                  day: 'numeric', 
+                  month: 'long' 
+                })}`
+            }
+          </ThemedText>
           
-          {upcomingEvents.map((event) => (
-            <View key={event.id} style={[styles.eventCard, event.isNext && styles.nextEventCard]}>
-              {event.isNext && (
-                <View style={styles.nextEventBadge}>
-                  <Text style={styles.nextEventBadgeText}>PRÓXIMA</Text>
-                </View>
-              )}
-              
-              <View style={styles.eventHeader}>
-                <Image source={{ uri: event.image }} style={styles.eventImage} />
-                <View style={styles.eventInfo}>
-                  <Text style={styles.eventTitle}>{event.title}</Text>
-                  <View style={styles.eventDetails}>
-                    <View style={styles.detailRow}>
-                      <Calendar size={16} color="#6B7280" />
-                      <Text style={styles.detailText}>{event.date}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Clock size={16} color="#6B7280" />
-                      <Text style={styles.detailText}>{event.time}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <MapPin size={16} color="#6B7280" />
-                      <Text style={styles.detailText}>{event.location}</Text>
+          {upcomingEvents.length === 0 ? (
+            <View style={[styles.noEventsContainer, { backgroundColor: colors.background.secondary }]}>
+              <ThemedText variant="secondary" size="base" style={styles.noEventsText}>
+                {selectedDate.toDateString() === new Date().toDateString() 
+                  ? 'No hay juntadas próximas'
+                  : `No hay juntadas el ${selectedDate.toLocaleDateString('es-ES', { 
+                      day: 'numeric', 
+                      month: 'long' 
+                    })}`
+                }
+              </ThemedText>
+            </View>
+          ) : (
+            upcomingEvents.map((event) => (
+            <ThemedCard 
+              key={event.id} 
+              variant={event.isNext ? "elevated" : "outlined"}
+              padding="medium"
+              style={styles.eventCard}
+            >
+              <TouchableOpacity 
+                onPress={() => router.push(`/meeting-details?id=${event.id}`)}
+                style={{ flex: 1 }}
+              >
+                {event.isNext && (
+                  <View style={[styles.nextEventBadge, { backgroundColor: colors.primary[500] }]}>
+                    <ThemedText variant="inverse" size="xs" weight="bold" style={styles.nextEventBadgeText}>
+                      PRÓXIMA
+                    </ThemedText>
+                  </View>
+                )}
+                
+                <View style={styles.eventHeader}>
+                  <Image source={{ uri: event.image }} style={styles.eventImage} />
+                  <View style={styles.eventInfo}>
+                    <ThemedText variant="primary" size="base" weight="semiBold" style={styles.eventTitle}>
+                      {event.title}
+                    </ThemedText>
+                    <View style={styles.eventDetails}>
+                      <View style={styles.detailRow}>
+                        <Calendar size={16} color={colors.text.secondary} />
+                        <ThemedText variant="secondary" size="sm" style={styles.detailText}>
+                          {event.date}
+                        </ThemedText>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Clock size={16} color={colors.text.secondary} />
+                        <ThemedText variant="secondary" size="sm" style={styles.detailText}>
+                          {event.time}
+                        </ThemedText>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <MapPin size={16} color={colors.text.secondary} />
+                        <ThemedText variant="secondary" size="sm" style={styles.detailText}>
+                          {event.location}
+                        </ThemedText>
+                      </View>
                     </View>
                   </View>
                 </View>
-              </View>
 
-              <View style={styles.attendeesSection}>
-                <View style={styles.attendeesInfo}>
-                  <Users size={16} color="#6B7280" />
-                  <Text style={styles.attendeesText}>
-                    {event.confirmed}/{event.total} confirmados
-                  </Text>
-                </View>
+                <View style={styles.attendeesSection}>
+                  <View style={styles.attendeesInfo}>
+                    <Users size={16} color={colors.text.secondary} />
+                    <ThemedText variant="secondary" size="sm" style={styles.attendeesText}>
+                      {event.confirmed}/{event.total} confirmados
+                    </ThemedText>
+                  </View>
                 
                 <View style={styles.attendeeAvatars}>
                   {event.attendees.slice(0, 4).map((attendee, index) => (
-                    <View key={index} style={[styles.attendeeAvatar, { marginLeft: index > 0 ? -8 : 0 }]}>
-                      <Text style={styles.attendeeInitial}>{attendee[0]}</Text>
+                    <View key={index} style={[styles.attendeeAvatar, { 
+                      marginLeft: index > 0 ? -8 : 0,
+                      backgroundColor: colors.primary[500]
+                    }]}>
+                      <ThemedText variant="inverse" size="xs" weight="medium" style={styles.attendeeInitial}>
+                        {attendee[0]}
+                      </ThemedText>
                     </View>
                   ))}
                   {event.attendees.length > 4 && (
-                    <View style={[styles.attendeeAvatar, styles.moreAttendees, { marginLeft: -8 }]}>
-                      <Text style={styles.moreAttendeesText}>+{event.attendees.length - 4}</Text>
+                    <View style={[styles.attendeeAvatar, { 
+                      marginLeft: -8,
+                      backgroundColor: colors.text.secondary
+                    }]}>
+                      <ThemedText variant="inverse" size="xs" weight="medium" style={styles.moreAttendeesText}>
+                        +{event.attendees.length - 4}
+                      </ThemedText>
                     </View>
                   )}
                 </View>
@@ -160,61 +267,80 @@ export default function CalendarScreen() {
 
               {event.isNext && (
                 <View style={styles.eventActions}>
-                  <TouchableOpacity
-                    style={[styles.actionButton, checkedIn && styles.checkedInButton]}
+                  <ThemedButton
+                    title={checkedIn ? 'Check-in realizado' : 'Hacer Check-in'}
                     onPress={() => setShowCheckInModal(true)}
+                    variant="primary"
+                    size="small"
                     disabled={checkedIn}
-                  >
-                    {checkedIn ? (
-                      <CheckCircle size={20} color="white" />
-                    ) : (
-                      <MapPin size={20} color="white" />
-                    )}
-                    <Text style={styles.actionButtonText}>
-                      {checkedIn ? 'Check-in realizado' : 'Hacer Check-in'}
-                    </Text>
-                  </TouchableOpacity>
+                    style={{
+                      ...styles.actionButton,
+                      backgroundColor: checkedIn ? colors.semantic.success : colors.primary[500]
+                    }}
+                  />
                   
                   <TouchableOpacity style={styles.cameraButton}>
-                    <Camera size={20} color="#8B5CF6" />
+                    <Camera size={20} color={colors.primary[500]} />
                   </TouchableOpacity>
                   
                   <TouchableOpacity style={styles.chatButton}>
-                    <MessageCircle size={20} color="#8B5CF6" />
+                    <MessageCircle size={20} color={colors.primary[500]} />
                   </TouchableOpacity>
                 </View>
               )}
-            </View>
-          ))}
+              </TouchableOpacity>
+            </ThemedCard>
+          ))
+          )}
         </View>
 
         {/* Past Events */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Juntadas Pasadas</Text>
+          <ThemedText variant="primary" size="lg" weight="semiBold" style={styles.sectionTitle}>
+            Juntadas Pasadas
+          </ThemedText>
           
           {pastEvents.map((event) => (
-            <View key={event.id} style={styles.pastEventCard}>
-              <View style={styles.eventHeader}>
-                <Image source={{ uri: event.image }} style={styles.eventImage} />
-                <View style={styles.eventInfo}>
-                  <Text style={styles.eventTitle}>{event.title}</Text>
-                  <View style={styles.eventDetails}>
-                    <View style={styles.detailRow}>
-                      <Calendar size={16} color="#6B7280" />
-                      <Text style={styles.detailText}>{event.date}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Camera size={16} color="#6B7280" />
-                      <Text style={styles.detailText}>{event.photos} fotos</Text>
+            <ThemedCard 
+              key={event.id} 
+              variant="outlined"
+              padding="medium"
+              style={styles.pastEventCard}
+            >
+              <TouchableOpacity 
+                onPress={() => router.push(`/meeting-details?id=${event.id}`)}
+                style={{ flex: 1 }}
+              >
+                <View style={styles.eventHeader}>
+                  <Image source={{ uri: event.image }} style={styles.eventImage} />
+                  <View style={styles.eventInfo}>
+                    <ThemedText variant="primary" size="base" weight="semiBold" style={styles.eventTitle}>
+                      {event.title}
+                    </ThemedText>
+                    <View style={styles.eventDetails}>
+                      <View style={styles.detailRow}>
+                        <Calendar size={16} color={colors.text.secondary} />
+                        <ThemedText variant="secondary" size="sm" style={styles.detailText}>
+                          {event.date}
+                        </ThemedText>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Camera size={16} color={colors.text.secondary} />
+                        <ThemedText variant="secondary" size="sm" style={styles.detailText}>
+                          {event.photos} fotos
+                        </ThemedText>
+                      </View>
                     </View>
                   </View>
+                  <View style={styles.pointsEarned}>
+                    <Star size={16} color={colors.secondary[500]} />
+                    <ThemedText variant="accent" size="sm" weight="medium" style={styles.pointsText}>
+                      +{event.points}
+                    </ThemedText>
+                  </View>
                 </View>
-                <View style={styles.pointsEarned}>
-                  <Star size={16} color="#F59E0B" />
-                  <Text style={styles.pointsText}>+{event.points}</Text>
-                </View>
-              </View>
-            </View>
+              </TouchableOpacity>
+            </ThemedCard>
           ))}
         </View>
       </ScrollView>
@@ -226,29 +352,36 @@ export default function CalendarScreen() {
         animationType="slide"
         onRequestClose={() => setShowCheckInModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Check-in en la Juntada</Text>
-            <Text style={styles.modalText}>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.background.overlay }]}>
+          <ThemedCard variant="elevated" padding="large" style={styles.modalContent}>
+            <ThemedText variant="primary" size="xl" weight="bold" style={styles.modalTitle}>
+              Check-in en la Juntada
+            </ThemedText>
+            <ThemedText variant="secondary" size="base" style={styles.modalText}>
               ¿Estás en "Asado en lo de Juan"? Confirma tu asistencia para ganar puntos.
-            </Text>
+            </ThemedText>
             
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.cancelButton}
+              <ThemedButton
+                title="Cancelar"
                 onPress={() => setShowCheckInModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
+                variant="secondary"
+                size="medium"
+                style={styles.cancelButton}
+              />
               
-              <TouchableOpacity
-                style={styles.confirmButton}
+              <ThemedButton
+                title="Confirmar Check-in"
                 onPress={handleCheckIn}
-              >
-                <Text style={styles.confirmButtonText}>Confirmar Check-in</Text>
-              </TouchableOpacity>
+                variant="primary"
+                size="medium"
+                style={{
+                  ...styles.confirmButton,
+                  backgroundColor: colors.primary[500]
+                }}
+              />
             </View>
-          </View>
+          </ThemedCard>
         </View>
       </Modal>
     </SafeAreaView>
@@ -258,7 +391,6 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
   },
   header: {
     flexDirection: 'row',
@@ -266,20 +398,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
   headerTitle: {
     fontSize: 28,
     fontFamily: 'Inter-Bold',
-    color: '#1F2937',
   },
   addButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -293,7 +422,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
     marginBottom: 16,
   },
   calendarScroll: {
@@ -305,38 +433,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginHorizontal: 4,
     borderRadius: 12,
-    backgroundColor: 'white',
     minWidth: 60,
   },
   todayDay: {
-    backgroundColor: '#8B5CF6',
+  },
+  selectedDay: {
   },
   dayName: {
     fontSize: 12,
     fontFamily: 'Inter-Medium',
-    color: '#6B7280',
     marginBottom: 4,
   },
   dayNumber: {
     fontSize: 18,
     fontFamily: 'Inter-Bold',
-    color: '#1F2937',
   },
   todayText: {
-    color: 'white',
   },
   eventDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#F59E0B',
     marginTop: 4,
   },
   section: {
     marginBottom: 24,
   },
   eventCard: {
-    backgroundColor: 'white',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -354,7 +477,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -1,
     right: 20,
-    backgroundColor: '#8B5CF6',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -363,7 +485,6 @@ const styles = StyleSheet.create({
   nextEventBadgeText: {
     fontSize: 10,
     fontFamily: 'Inter-Bold',
-    color: 'white',
   },
   eventHeader: {
     flexDirection: 'row',
@@ -381,7 +502,6 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 18,
     fontFamily: 'Inter-SemiBold',
-    color: '#1F2937',
     marginBottom: 8,
   },
   eventDetails: {
@@ -394,7 +514,6 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
     marginLeft: 8,
   },
   attendeesSection: {
@@ -410,7 +529,6 @@ const styles = StyleSheet.create({
   attendeesText: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
-    color: '#6B7280',
     marginLeft: 8,
   },
   attendeeAvatars: {
@@ -420,7 +538,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#8B5CF6',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -429,15 +546,12 @@ const styles = StyleSheet.create({
   attendeeInitial: {
     fontSize: 12,
     fontFamily: 'Inter-Bold',
-    color: 'white',
   },
   moreAttendees: {
-    backgroundColor: '#6B7280',
   },
   moreAttendeesText: {
     fontSize: 10,
     fontFamily: 'Inter-Bold',
-    color: 'white',
   },
   eventActions: {
     flexDirection: 'row',
@@ -448,15 +562,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#8B5CF6',
     paddingVertical: 12,
     borderRadius: 12,
   },
   checkedInButton: {
-    backgroundColor: '#10B981',
   },
   actionButtonText: {
-    color: 'white',
     fontFamily: 'Inter-SemiBold',
     fontSize: 14,
     marginLeft: 8,
@@ -465,7 +576,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -473,12 +583,10 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   pastEventCard: {
-    backgroundColor: 'white',
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -492,7 +600,6 @@ const styles = StyleSheet.create({
   pointsEarned: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -500,7 +607,6 @@ const styles = StyleSheet.create({
   pointsText: {
     fontSize: 14,
     fontFamily: 'Inter-Bold',
-    color: '#F59E0B',
     marginLeft: 4,
   },
   modalOverlay: {
@@ -511,7 +617,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: 'white',
     borderRadius: 20,
     padding: 24,
     width: '100%',
@@ -520,14 +625,12 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontFamily: 'Inter-Bold',
-    color: '#1F2937',
     marginBottom: 12,
     textAlign: 'center',
   },
   modalText: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
-    color: '#6B7280',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 24,
@@ -540,24 +643,31 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
   },
   cancelButtonText: {
     fontSize: 16,
     fontFamily: 'Inter-Medium',
-    color: '#6B7280',
   },
   confirmButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#8B5CF6',
     alignItems: 'center',
   },
   confirmButtonText: {
     fontSize: 16,
     fontFamily: 'Inter-SemiBold',
-    color: 'white',
+  },
+  noEventsContainer: {
+    borderRadius: 12,
+    padding: 32,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  noEventsText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    textAlign: 'center',
   },
 }); 

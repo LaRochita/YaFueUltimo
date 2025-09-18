@@ -8,16 +8,21 @@ import {
   TextInput,
   SafeAreaView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { User, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { createUser, loginUser, loginUserWithGoogle } from '../services/users';
 import { useUserStore } from '../store/userStore';
+import { useAppColors } from '../context/ThemeContext';
+import { ThemedButton, ThemedCard, ThemedText } from '../components';
+import { gradients } from '../constants/colors';
 
 export default function AuthScreen() {
   const router = useRouter();
   const setUser = useUserStore(state => state.setUser);
+  const { colors } = useAppColors();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -75,33 +80,44 @@ export default function AuthScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient colors={['#8B5CF6', '#EC4899']} style={styles.gradient}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <LinearGradient colors={gradients.hero as any} style={styles.gradient}>
+        <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={styles.title}>Ya Fue 🎉</Text>
-            <Text style={styles.subtitle}>
-              {isLogin ? 'Bienvenido de vuelta' : 'Únete a la diversión'}
-            </Text>
+            <Image source={require('../assets/images/isologo.png')} style={styles.logo} />
+            <ThemedText variant="inverse" size="2xl" weight="bold" style={styles.title}>
+              Ya Fue
+            </ThemedText>
+            <ThemedText variant="inverse" size="base" style={styles.subtitle}>
+              {isLogin ? 'Inicia sesión en tu cuenta' : 'Crea tu cuenta nueva'}
+            </ThemedText>
           </View>
 
-          <View style={styles.formContainer}>
-            <View style={styles.tabsContainer}>
+          <ThemedCard variant="elevated" padding="medium" style={styles.formContainer}>
+            <View style={[styles.tabsContainer, { backgroundColor: colors.background.tertiary }]}>
               <TouchableOpacity
-                style={[styles.tab, isLogin && styles.activeTab]}
+                style={[styles.tab, isLogin && [styles.activeTab, { backgroundColor: colors.background.primary }]]}
                 onPress={() => setIsLogin(true)}
               >
-                <Text style={[styles.tabText, isLogin && styles.activeTabText]}>
+                <ThemedText 
+                  variant={isLogin ? 'primary' : 'secondary'} 
+                  weight={isLogin ? 'medium' : 'regular'}
+                  size="sm"
+                >
                   Iniciar Sesión
-                </Text>
+                </ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.tab, !isLogin && styles.activeTab]}
+                style={[styles.tab, !isLogin && [styles.activeTab, { backgroundColor: colors.background.primary }]]}
                 onPress={() => setIsLogin(false)}
               >
-                <Text style={[styles.tabText, !isLogin && styles.activeTabText]}>
+                <ThemedText 
+                  variant={!isLogin ? 'primary' : 'secondary'} 
+                  weight={!isLogin ? 'medium' : 'regular'}
+                  size="sm"
+                >
                   Registrarse
-                </Text>
+                </ThemedText>
               </TouchableOpacity>
             </View>
 
@@ -128,71 +144,88 @@ export default function AuthScreen() {
             </View>
 
             <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>o continúa con email</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: colors.border.primary }]} />
+              <ThemedText variant="secondary" size="sm" style={styles.dividerText}>
+                o continúa con email
+              </ThemedText>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border.primary }]} />
             </View>
 
             <View style={styles.inputContainer}>
               {!isLogin && (
                 <>
-                  <View style={styles.inputWrapper}>
-                    <User size={20} color="#6B7280" style={styles.inputIcon} />
+                  <View style={[styles.inputWrapper, { 
+                    backgroundColor: colors.background.secondary,
+                    borderColor: colors.border.primary 
+                  }]}>
+                    <User size={20} color={colors.text.secondary} style={styles.inputIcon} />
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { color: colors.text.primary }]}
                       placeholder="Nombre"
                       value={formData.firstName}
                       onChangeText={(text) => setFormData({ ...formData, firstName: text })}
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.text.tertiary}
                       editable={!isLoading}
                     />
                   </View>
-                  <View style={styles.inputWrapper}>
-                    <User size={20} color="#6B7280" style={styles.inputIcon} />
+                  <View style={[styles.inputWrapper, { 
+                    backgroundColor: colors.background.secondary,
+                    borderColor: colors.border.primary 
+                  }]}>
+                    <User size={20} color={colors.text.secondary} style={styles.inputIcon} />
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { color: colors.text.primary }]}
                       placeholder="Apellido"
                       value={formData.lastName}
                       onChangeText={(text) => setFormData({ ...formData, lastName: text })}
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.text.tertiary}
                       editable={!isLoading}
                     />
                   </View>
-                  <View style={styles.inputWrapper}>
-                    <User size={20} color="#6B7280" style={styles.inputIcon} />
+                  <View style={[styles.inputWrapper, { 
+                    backgroundColor: colors.background.secondary,
+                    borderColor: colors.border.primary 
+                  }]}>
+                    <User size={20} color={colors.text.secondary} style={styles.inputIcon} />
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { color: colors.text.primary }]}
                       placeholder="Apodo"
                       value={formData.username}
                       onChangeText={(text) => setFormData({ ...formData, username: text })}
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.text.tertiary}
                       editable={!isLoading}
                     />
                   </View>
                 </>
               )}
-              <View style={styles.inputWrapper}>
-                <Mail size={20} color="#6B7280" style={styles.inputIcon} />
+              <View style={[styles.inputWrapper, { 
+                backgroundColor: colors.background.secondary,
+                borderColor: colors.border.primary 
+              }]}>
+                <Mail size={20} color={colors.text.secondary} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text.primary }]}
                   placeholder="Email"
                   value={formData.email}
                   onChangeText={(text) => setFormData({ ...formData, email: text })}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.text.tertiary}
                   editable={!isLoading}
                 />
               </View>
-              <View style={styles.inputWrapper}>
-                <Lock size={20} color="#6B7280" style={styles.inputIcon} />
+              <View style={[styles.inputWrapper, { 
+                backgroundColor: colors.background.secondary,
+                borderColor: colors.border.primary 
+              }]}>
+                <Lock size={20} color={colors.text.secondary} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text.primary }]}
                   placeholder="Contraseña"
                   value={formData.password}
                   onChangeText={(text) => setFormData({ ...formData, password: text })}
                   secureTextEntry={!showPassword}
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.text.tertiary}
                   editable={!isLoading}
                 />
                 <TouchableOpacity
@@ -201,38 +234,36 @@ export default function AuthScreen() {
                   disabled={isLoading}
                 >
                   {showPassword ? (
-                    <EyeOff size={20} color="#6B7280" />
+                    <EyeOff size={20} color={colors.text.secondary} />
                   ) : (
-                    <Eye size={20} color="#6B7280" />
+                    <Eye size={20} color={colors.text.secondary} />
                   )}
                 </TouchableOpacity>
               </View>
             </View>
 
-            <TouchableOpacity
-              style={[styles.primaryButton, isLoading && styles.disabledButton]}
+            <ThemedButton
+              title={isLogin ? 'Iniciar Sesión' : 'Registrarse'}
               onPress={handleEmailAuth}
+              variant="primary"
+              size="medium"
+              gradient={true}
               disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text style={styles.primaryButtonText}>
-                  {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
-                </Text>
-              )}
-            </TouchableOpacity>
+              style={styles.primaryButton}
+            />
 
             {isLogin && (
               <TouchableOpacity 
                 style={styles.forgotPassword}
                 disabled={isLoading}
               >
-                <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
+                <ThemedText variant="accent" size="sm" weight="medium">
+                  ¿Olvidaste tu contraseña?
+                </ThemedText>
               </TouchableOpacity>
             )}
-          </View>
-        </ScrollView>
+          </ThemedCard>
+        </View>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -245,72 +276,60 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
+  content: {
+    flex: 1,
     justifyContent: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 24,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: 12,
   },
   title: {
-    fontSize: 48,
-    fontFamily: 'Inter-Bold',
-    color: 'white',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Regular',
-    color: 'rgba(255, 255, 255, 0.8)',
+    opacity: 0.9,
     textAlign: 'center',
   },
   formContainer: {
-    backgroundColor: 'white',
-    borderRadius: 24,
-    padding: 24,
-    margin: 16,
+    marginHorizontal: 8,
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
     borderRadius: 12,
     padding: 4,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   tab: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
   activeTab: {
-    backgroundColor: 'white',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  tabText: {
-    fontFamily: 'Inter-Medium',
-    color: '#6B7280',
-    fontSize: 14,
-  },
-  activeTabText: {
-    color: '#1F2937',
-  },
   socialContainer: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderRadius: 12,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   socialIcon: {
     fontSize: 18,
@@ -324,64 +343,43 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 24,
+    marginVertical: 16,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E5E7EB',
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#6B7280',
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
   },
   inputContainer: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 12,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   inputIcon: {
     marginRight: 12,
   },
   input: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 12,
     fontFamily: 'Inter-Regular',
     fontSize: 16,
-    color: '#1F2937',
   },
   eyeIcon: {
     padding: 4,
   },
   primaryButton: {
-    backgroundColor: '#8B5CF6',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  primaryButtonText: {
-    color: 'white',
-    fontFamily: 'Inter-SemiBold',
-    fontSize: 16,
+    marginBottom: 12,
   },
   forgotPassword: {
     alignItems: 'center',
-  },
-  forgotPasswordText: {
-    color: '#8B5CF6',
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
   },
   disabledButton: {
     opacity: 0.7,

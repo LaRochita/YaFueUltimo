@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUserStore } from '../store/userStore';
+import { gradients } from '../constants/colors';
 
 export default function IndexScreen() {
   const router = useRouter();
@@ -26,16 +27,11 @@ export default function IndexScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#8B5CF6', '#EC4899']}
+        colors={gradients.hero as any}
         style={styles.gradient}
       >
         <View style={styles.logoContainer}>
-          <View style={styles.logo}>
-            <View style={styles.logoText}>
-              <View style={styles.yaText} />
-              <View style={styles.fueText} />
-            </View>
-          </View>
+          <Image source={require('../assets/images/isologo.png')} style={styles.logo} />
         </View>
       </LinearGradient>
     </View>

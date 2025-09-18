@@ -11,12 +11,13 @@ import {
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
 import { useUserStore } from '../store/userStore';
+import { ThemeProvider, useTheme } from '../context/ThemeContext';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  useFrameworkReady();
-  const initialize = useUserStore(state => state.initialize);
+// Componente interno que maneja la StatusBar con el tema
+function AppContent() {
+  const { isDark } = useTheme();
   const user = useUserStore(state => state.user);
   const isLoading = useUserStore(state => state.isLoading);
 
@@ -28,7 +29,7 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    initialize();
+    useUserStore.getState().initialize();
   }, []);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+  // Si no están cargadas las fuentes o hay un error, o está cargando, no renderizamos nada
   if (!fontsLoaded && !fontError || isLoading) {
     return null;
   }
@@ -51,7 +53,18 @@ export default function RootLayout() {
         )}
         <Stack.Screen name="+not-found" />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style={isDark ? "light" : "dark"} />
     </>
+  );
+}
+
+export default function RootLayout() {
+  useFrameworkReady();
+
+  // Envolvemos toda la aplicación con el ThemeProvider
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
